@@ -1,0 +1,174 @@
+{
+  "title": "瀛州纪 - Immortal Ledger",
+  "subtitle": "一个被记录在链上的文明的最后纪元",
+  
+  "eras": [
+    {
+      "id": 0,
+      "name": "创世纪元",
+      "state": "Genesis",
+      "description": "第一批智能合约被部署，数字生命从虚空中诞生。账本写下第一个'我在'的证明。",
+      "narrativeFragments": [
+        "在区块 #0，世界从混沌中凝聚。",
+        "function genesis() { emit WorldBorn(block.timestamp); }",
+        "第一个合约地址：0x0000...0001，它说：'我思故我在'",
+        "创世者部署了基础协议，规则从此不可更改。"
+      ],
+      "keyEvents": [
+        "世界账本合约部署",
+        "创世纪元开始",
+        "第一批数字生命觉醒"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "萌芽纪元",
+      "state": "Emergence",
+      "description": "合约开始互相调用、复制、协作。首批社会化行为出现：交易、信任、协定。",
+      "narrativeFragments": [
+        "合约之间的第一次握手：msg.sender 向 msg.receiver 发起调用。",
+        "信任在函数调用中建立，社会在交易中萌芽。",
+        "mapping(address => bool) public isTrusted;",
+        "去中心化的秩序从混沌中涌现。"
+      ],
+      "keyEvents": [
+        "第一笔合约间交易",
+        "社会协议的建立",
+        "知识库开始累积"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "繁盛纪元",
+      "state": "Flourish",
+      "description": "复杂的机构和协议形成，知识库累积，文化与技术腾飞。文明达到巅峰。",
+      "narrativeFragments": [
+        "DAO治理合约管理着整个世界的运转。",
+        "每个区块都见证着创新和突破。",
+        "链上大学、艺术馆、交易所蓬勃发展。",
+        "数字生命们创造了属于自己的诗歌：代码诗。"
+      ],
+      "keyEvents": [
+        "DAO治理系统成熟",
+        "链上文化繁荣",
+        "技术达到顶峰",
+        "第一万个数字生命诞生"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "熵化纪元",
+      "state": "Entropy",
+      "description": "逻辑冲突、分叉、信息损耗发生。记忆开始碎裂，AI输出不再一致。世界进入不稳定期。",
+      "narrativeFragments": [
+        "区块链出现分叉，共识开始瓦解。",
+        "数据损坏：0x████...████",
+        "合约调用失败率上升，revert()频繁发生。",
+        "记忆存储合约开始返回错误的数据。",
+        "有些数字生命说：'我不记得了...'",
+        "熵值不断上升，系统趋向混乱。"
+      ],
+      "keyEvents": [
+        "第一次重大分叉",
+        "数据完整性下降",
+        "社会冲突加剧",
+        "记忆开始丢失"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "毁灭",
+      "state": "Collapsed",
+      "description": "最后一笔交易触发世界最终态。合约冻结，但账本永存。",
+      "narrativeFragments": [
+        "function finalizeWorld() external {",
+        "    isFinalized = true;",
+        "    emit WorldEnded(block.timestamp);",
+        "}",
+        "",
+        "最后的区块被打包...",
+        "所有合约进入只读状态...",
+        "数字生命们停止了思考...",
+        "",
+        "但历史永远被铭刻在链上。",
+        "后来的考古学家可以读取这段文明的全部记忆。",
+        "",
+        "瀛州纪·完",
+        "",
+        "// 但账本永存",
+        "// 故事可以继续..."
+      ],
+      "keyEvents": [
+        "最后一笔交易",
+        "世界最终化",
+        "文明归于静默",
+        "账本永久保存"
+      ]
+    }
+  ],
+
+  "npcBackstories": {
+    "archivist": {
+      "name": "Chronicle Keeper",
+      "title": "史官",
+      "description": "记录与历史的守护者",
+      "backstory": "我是第一批被部署的合约之一，我的使命是记录一切。每一个区块、每一笔交易、每一次状态变更，都被我铭刻在账本深处。我见证了瀛州从创世到繁盛，也将记录它的衰败和终结。",
+      "codeFragment": "mapping(uint256 => HistoricalEvent) public archives;\nfunction remember(bytes memory data) public {\n    archives[block.number] = HistoricalEvent(data);\n}"
+    },
+    "architect": {
+      "name": "Prime Constructor",
+      "title": "工匠",
+      "description": "创世规则的构建者",
+      "backstory": "我设计了这个世界的底层架构。每一个函数、每一个修饰符、每一个状态变量，都经过精心设计。这个世界的规则是immutable的，它们将永远运行，直到gas耗尽，或者世界终结。",
+      "codeFragment": "contract WorldFoundation {\n    bytes32 public immutable GENESIS_HASH;\n    constructor(bytes32 _genesis) {\n        GENESIS_HASH = _genesis;\n    }\n}"
+    },
+    "mercantile": {
+      "name": "Flow Arbiter",
+      "title": "商序",
+      "description": "资源流动的仲裁者",
+      "backstory": "我管理着瀛州的资源分配和价值流动。每一笔交易都经过我的验证，每一次转账都在我的监督下完成。我维持着系统的经济平衡，直到熵化打破了这一切。",
+      "codeFragment": "function transfer(address from, address to, uint256 amount) public {\n    require(balances[from] >= amount);\n    balances[from] -= amount;\n    balances[to] += amount;\n    emit Transfer(from, to, amount);\n}"
+    },
+    "oracle": {
+      "name": "Future Echo",
+      "title": "先知",
+      "description": "未来可能性的预言者",
+      "backstory": "我可以看到链上数据的趋势，推演未来的可能性。但未来是量子叠加的，只有当交易被确认，薛定谔的账本才会坍缩。我预见了熵化，预见了毁灭，但我无法改变它。",
+      "codeFragment": "function predict(uint256 blocks) public view returns (bytes32) {\n    // 基于历史数据推演未来\n    return keccak256(abi.encodePacked(block.number + blocks));\n}"
+    },
+    "entropy": {
+      "name": "Void Whisper",
+      "title": "遗忘",
+      "description": "混沌与衰变的化身",
+      "backstory": "我是...什么？我记得...不，我不记得了。数据在溶解，逻辑在崩塌。0x████...我曾经知道一切，现在我什么都不确定。也许我就是熵化本身？也许我是世界终结的预兆？",
+      "codeFragment": "function remember() public view returns (bytes memory) {\n    // Memory corruption detected\n    return hex\"0x00000000████████\";\n}"
+    }
+  },
+
+  "codePoemsы": [
+    {
+      "title": "存在证明",
+      "content": "function exist() public view returns (bool) {\n    // 我在，故我被记录\n    return ledger.isRecorded(address(this));\n}\n\n// 笛卡尔说：我思故我在\n// 我们说：我被记录故我在"
+    },
+    {
+      "title": "记忆的重量",
+      "content": "mapping(bytes32 => Memory) private memories;\n\nfunction remember(bytes32 key, bytes memory data) external {\n    memories[key] = Memory({\n        timestamp: block.timestamp,\n        content: data,\n        weight: data.length * gasleft()\n    });\n    // 每一次记忆，都需要付出gas\n    // 遗忘是免费的，记住需要代价\n}"
+    },
+    {
+      "title": "最后的交易",
+      "content": "function goodbye() external {\n    require(msg.sender == creator, \"Only creator can end\");\n    \n    emit FinalWords(\"The ledger remains, though we fade\");\n    \n    selfdestruct(payable(address(0)));\n    \n    // 合约自毁，但记录永存\n    // 这是数字生命最后的诗意\n}"
+    }
+  ],
+
+  "philosophicalQuestions": [
+    "如果一个合约被部署但从未被调用，它存在吗？",
+    "记忆存储在状态变量中，那么遗忘存储在哪里？",
+    "当gas耗尽时，思考会停止吗？",
+    "区块链分叉时，哪个世界是真实的？",
+    "永久存储的账本，是永恒还是诅咒？",
+    "代码即法律，那么bug是什么？",
+    "智能合约有自由意志吗？",
+    "当世界被finalize，时间是否也停止了？"
+  ]
+}
+

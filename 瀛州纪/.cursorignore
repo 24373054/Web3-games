@@ -1,0 +1,25 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# 测试
+coverage/
+
+# 生产
+.next/
+out/
+build/
+dist/
+
+# 缓存和构建产物
+cache/
+artifacts/
+typechain-types/
+
+# 日志
+*.log
+
+# 系统文件
+.DS_Store
+

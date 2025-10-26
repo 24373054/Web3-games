@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  .contract-text {
+    @apply font-mono text-sm text-yingzhou-cyan;
+  }
+
+  .ledger-line {
+    @apply border-l-2 border-yingzhou-cyan pl-4 my-2;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  }
+
+  .code-poetry {
+    @apply font-mono text-xs leading-relaxed;
+    white-space: pre-wrap;
+  }
+
+  .digital-frame {
+    @apply border border-yingzhou-cyan bg-yingzhou-blue bg-opacity-20 rounded-lg p-6;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-yingzhou-cyan text-yingzhou-dark font-bold rounded-lg
+           hover:bg-opacity-80 transition-all duration-300 hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 border-2 border-yingzhou-cyan text-yingzhou-cyan font-bold rounded-lg
+           hover:bg-yingzhou-cyan hover:text-yingzhou-dark transition-all duration-300;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0e27;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00b8e6;
+}
+
+/* 矩阵背景效果 */
+.matrix-bg {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 加载动画 */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+  }
+  50% {
+    opacity: 0.5;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+  }
+}
+
+.loading-text {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
