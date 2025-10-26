@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="图片/瀛州纪官网、README效果图片1.jpg" alt="瀛州纪 Banner" width="100%">
+<img src="瀛州纪/图片/瀛州纪官网、README效果图片1.jpg" alt="瀛州纪 Banner" width="100%">
 
 <h1>瀛州纪 | Immortal Ledger</h1>
 
@@ -18,7 +18,7 @@
 [![Ethers.js](https://img.shields.io/badge/Ethers.js-6.9-2535A0?style=flat-square)](https://docs.ethers.org/)
 
 <a href="https://github.com/24373054/Web3-games">
-  <img src="图片/刻熵_DAOSHOT.png" alt="DAOSHOT" width="200">
+  <img src="瀛州纪/图片/刻熵_DAOSHOT.png" alt="DAOSHOT" width="200">
 </a>
 
 [English](./README-EN.md) | [中文文档](./README.md) | [开发手册](./开发手册.md) | [快速开始](./快速开始指南.md)
@@ -451,7 +451,7 @@ MIT License
 
 ---
 
-<img src="图片/刻熵_DAOSHOT.png" alt="DAOSHOT Logo" width="150">
+<img src="瀛州纪/图片/刻熵_DAOSHOT.png" alt="DAOSHOT Logo" width="150">
 
 **瀛州纪 | Immortal Ledger** © 2025
 
