@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>简单测试</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+        #renderCanvas { width: 100%; height: 100vh; display: block; }
+        #info { position: absolute; top: 10px; left: 10px; color: #0f0; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div id="info">加载中...</div>
+    <canvas id="renderCanvas"></canvas>
+    
+    <script type="module">
+        import * as BABYLON from '@babylonjs/core';
+        
+        const info = document.getElementById('info');
+        info.innerHTML = '模块已加载<br>';
+        
+        try {
+            const canvas = document.getElementById('renderCanvas');
+            const engine = new BABYLON.Engine(canvas, true);
+            info.innerHTML += 'Engine已创建<br>';
+            
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.3);
+            info.innerHTML += 'Scene已创建<br>';
+            
+            const camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 5, -10), scene);
+            camera.setTarget(BABYLON.Vector3.Zero());
+            camera.attachControl(canvas, true);
+            info.innerHTML += 'Camera已创建<br>';
+            
+            const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+            light.intensity = 1;
+            info.innerHTML += 'Light已创建<br>';
+            
+            const sphere = BABYLON.MeshBuilder.CreateSphere('sphere', {diameter: 2}, scene);
+            sphere.position.y = 1;
+            const sphereMat = new BABYLON.StandardMaterial('sphereMat', scene);
+            sphereMat.diffuseColor = new BABYLON.Color3(0, 1, 1);
+            sphereMat.emissiveColor = new BABYLON.Color3(0, 0.5, 0.5);
+            sphere.material = sphereMat;
+            info.innerHTML += 'Sphere已创建<br>';
+            
+            const ground = BABYLON.MeshBuilder.CreateGround('ground', {width: 10, height: 10}, scene);
+            const groundMat = new BABYLON.StandardMaterial('groundMat', scene);
+            groundMat.diffuseColor = new BABYLON.Color3(0.2, 0.3, 0.2);
+            ground.material = groundMat;
+            info.innerHTML += 'Ground已创建<br>';
+            
+            info.innerHTML += '<br><strong>渲染中...</strong>';
+            
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+            
+            window.addEventListener('resize', () => {
+                engine.resize();
+            });
+            
+        } catch (error) {
+            info.innerHTML += '<br><span style="color: red;">错误: ' + error.message + '</span>';
+            console.error(error);
+        }
+    </script>
+</body>
+</html>
+
