@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瀛州纪 | Yingzhou Chronicles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #0f0;
+            overflow: hidden;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            outline: none;
+        }
+
+        /* HUD 界面 */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 玩家信息面板 */
+        #playerInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+            font-size: 12px;
+            max-width: 350px;
+            pointer-events: auto;
+        }
+
+        .info-line {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+
+        .address {
+            color: #00ffff;
+            word-break: break-all;
+        }
+
+        .status {
+            color: #ffff00;
+        }
+
+        /* 世界状态面板 */
+        #worldInfo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff0000;
+            padding: 15px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+
+        .countdown {
+            color: #ff0000;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        /* 对话框 */
+        #dialogBox {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #0f0;
+            padding: 20px;
+            display: none;
+            pointer-events: auto;
+        }
+
+        .dialog-title {
+            color: #00ffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .dialog-content {
+            color: #0f0;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .dialog-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .dialog-option {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .dialog-option:hover {
+            background: rgba(0, 255, 0, 0.3);
+            border-color: #fff;
+        }
+
+        /* 任务日志 */
+        #questLog {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffff00;
+            padding: 15px;
+            font-size: 12px;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .quest-item {
+            margin: 8px 0;
+            padding: 5px;
+            border-left: 2px solid #ffff00;
+            padding-left: 10px;
+        }
+
+        .quest-complete {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        /* 加载屏幕 */
+        #loadingScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-title {
+            font-size: 48px;
+            color: #0f0;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0f0;
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: #0f0;
+            margin: 10px 0;
+        }
+
+        .start-button {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: transparent;
+            border: 2px solid #0f0;
+            color: #0f0;
+            font-size: 18px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .start-button:hover {
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0;
+        }
+
+        /* 控制提示 */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #0f0;
+            padding: 10px;
+            font-size: 11px;
+        }
+        
+        /* 调试面板 */
+        #debugPanel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #ff00ff;
+            padding: 10px;
+            font-size: 11px;
+            color: #ff00ff;
+            display: none;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0f0;
+        }
+
+        /* 小游戏容器样式 */
+        .mini-game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mini-game-container.hidden {
+            display: none;
+        }
+
+        .mini-game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+
+        .mini-game-content {
+            position: relative;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            border: 2px solid #0ff;
+            border-radius: 15px;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            pointer-events: auto;
+        }
+
+        .mini-game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #0ff;
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .mini-game-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0ff;
+            margin: 0;
+        }
+
+        .mini-game-close {
+            background: transparent;
+            border: 2px solid #0ff;
+            color: #0ff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .mini-game-close:hover {
+            background: #0ff;
+            color: #000;
+        }
+
+        .mini-game-body {
+            padding: 30px;
+        }
+
+        /* 游戏通用样式 */
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .score-box {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid #0ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        .score-label {
+            font-size: 12px;
+            color: #0ff;
+            margin-bottom: 5px;
+        }
+
+        .score-value {
+            font-size: 24px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .btn-new-game, .btn-primary {
+            background: transparent;
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-new-game:hover, .btn-primary:hover {
+            background: #0ff;
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .game-instructions {
+            text-align: center;
+            color: #0ff;
+            font-size: 12px;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        /* 2048 游戏样式 */
+        .game-board-2048 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .tile {
+            aspect-ratio: 1;
+            background: #2a2a2a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            transition: all 0.2s;
+        }
+
+        .tile-0 { background: #2a2a2a; }
+        .tile-2 { background: #eee4da; color: #776e65; }
+        .tile-4 { background: #ede0c8; color: #776e65; }
+        .tile-8 { background: #f2b179; color: #f9f6f2; }
+        .tile-16 { background: #f59563; color: #f9f6f2; }
+        .tile-32 { background: #f67c5f; color: #f9f6f2; }
+        .tile-64 { background: #f65e3b; color: #f9f6f2; }
+        .tile-128 { background: #edcf72; color: #f9f6f2; }
+        .tile-256 { background: #edcc61; color: #f9f6f2; }
+        .tile-512 { background: #edc850; color: #f9f6f2; }
+        .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 18px; }
+        .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 18px; }
+
+        /* 一笔画游戏样式 */
+        #oneLineCanvas {
+            background: #1a1a1a;
+            border-radius: 10px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* 记忆游戏样式 */
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        .memory-card {
+            aspect-ratio: 1;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .memory-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .memory-card.flipped .memory-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .memory-card-front, .memory-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .memory-card-front {
+            background: #2a2a2a;
+            border: 2px solid #0ff;
+            color: #0ff;
+        }
+
+        .memory-card-back {
+            background: linear-gradient(135deg, #0ff 0%, #00aa88 100%);
+            transform: rotateY(180deg);
+        }
+
+        /* 占位游戏样式 */
+        .game-placeholder {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .game-placeholder h3 {
+            color: #0ff;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .game-placeholder p {
+            color: #999;
+            margin-bottom: 25px;
+        }
+
+        /* 游戏完成样式 */
+        .game-complete {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .complete-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .game-complete h3 {
+            color: #0ff;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .game-complete p {
+            color: #fff;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .complete-reward {
+            color: #ffff00;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0 !important;
+        }
+
+        /* 探索时间限制样式 */
+        .time-limit-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            border: 2px solid #ff0000;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        }
+
+        .time-limit-warning h2 {
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .time-limit-warning p {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        /* 闪烁动画 */
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载屏幕 -->
+    <div id="loadingScreen">
+        <div class="loading-title">瀛州纪</div>
+        <div class="loading-text">Yingzhou Chronicles</div>
+        <div class="loading-text" style="margin-top: 30px;">
+            连接到区块链账本...<br>
+            坐标: 天鹰座 ξ-7 星系<br>
+            距离: 1.2×10^9 光年<br>
+            时间节点: 文明纪元 99999.9999
+        </div>
+        <div class="loading-text" style="color: #ff0000; margin-top: 20px;">
+            警告: 世界毁灭倒计时已启动
+        </div>
+        <button class="start-button" id="startButton">进入瀛州</button>
+    </div>
+
+    <!-- 3D 渲染画布 -->
+    <canvas id="renderCanvas"></canvas>
+
+    <!-- HUD 界面 -->
+    <div id="hud">
+        <!-- 玩家信息 -->
+        <div id="playerInfo">
+            <div class="info-line"><strong>/// 数字生命体信息 ///</strong></div>
+            <div class="info-line">合约地址: <span class="address" id="playerAddress"></span></div>
+            <div class="info-line">生成区块: <span id="birthBlock"></span></div>
+            <div class="info-line">已交互实体: <span id="interactionCount">0</span></div>
+            <div class="info-line">状态: <span class="status" id="playerStatus">就绪</span></div>
+        </div>
+
+        <!-- 世界状态 -->
+        <div id="worldInfo">
+            <div class="info-line"><strong>/// 世界状态 ///</strong></div>
+            <div class="info-line">瀛州文明纪元: 99999.9999</div>
+            <div class="countdown" id="countdown">299.99</div>
+            <div class="info-line" style="color: #ff0000; text-align: center;">区块单位至熵增临界</div>
+            <div class="info-line">活跃实体: <span id="entityCount">0</span></div>
+            <div class="info-line">当前区块高度: <span id="blockHeight">0</span></div>
+        </div>
+
+        <!-- 任务日志 -->
+        <div id="questLog">
+            <div class="info-line"><strong>/// 记忆碎片 ///</strong></div>
+            <div id="questList"></div>
+        </div>
+
+        <!-- 对话框 -->
+        <div id="dialogBox">
+            <div class="dialog-title" id="dialogTitle"></div>
+            <div class="dialog-content" id="dialogContent"></div>
+            <div class="dialog-options" id="dialogOptions"></div>
+        </div>
+
+        <!-- 控制提示 -->
+        <div id="controls">
+            <strong>控制:</strong><br>
+            <span style="color: #ffff00;">💡 先点击画面激活控制</span><br>
+            WASD - 移动<br>
+            鼠标 - 视角<br>
+            E - 交互<br>
+            空格 - 跳跃<br>
+            F1 - 调试面板
+        </div>
+        
+        <!-- 调试面板 -->
+        <div id="debugPanel">
+            <strong>调试信息</strong><br>
+            位置: <span id="debugPos">-</span><br>
+            速度: <span id="debugVel">-</span><br>
+            按键: <span id="debugKeys">-</span><br>
+            FPS: <span id="debugFPS">-</span>
+        </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
+

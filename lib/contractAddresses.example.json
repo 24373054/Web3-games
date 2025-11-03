@@ -1,0 +1,16 @@
+{
+  "chainId": 31337,
+  "rpcUrl": "http://127.0.0.1:8545",
+  "worldLedger": "",
+  "digitalBeing": "",
+  "ainpc": "",
+  "memoryFragment": "",
+  "explorer": "",
+  "personalizedAINPC": "",
+  "resource1155": "",
+  "market": "",
+  "deployedAt": "",
+  "_comment": "This file will be automatically generated when you run: npx hardhat run scripts/deploy.js --network localhost"
+}
+
+
