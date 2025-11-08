@@ -75,11 +75,47 @@ export default function DigitalBeingCard({
 
     try {
       setCreating(true)
+      
+      // 检查网络
+      const network = await provider.getNetwork()
+      const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID || '31337'
+      
+      if (network.chainId.toString() !== expectedChainId) {
+        alert(
+          `❌ 网络错误！\n\n` +
+          `当前网络: ${network.chainId}\n` +
+          `需要网络: ${expectedChainId}\n\n` +
+          `请在 MetaMask 中切换到 Hardhat Local 网络\n` +
+          `(Chain ID: ${expectedChainId})`
+        )
+        setCreating(false)
+        return
+      }
+      
       const signer = await provider.getSigner()
       const contract = getDigitalBeingContract(signer)
       
-      // 先检查是否已经有 being
-      const existingId = await contract.addressToBeingId(account)
+      // 使用 try-catch 包裹读取操作，处理网络不匹配问题
+      let existingId
+      try {
+        existingId = await contract.addressToBeingId(account)
+      } catch (readError: any) {
+        console.error('读取现有 Being 失败:', readError)
+        alert(
+          `❌ 无法连接到合约！\n\n` +
+          `可能原因：\n` +
+          `1. MetaMask 未连接到正确的网络\n` +
+          `2. Hardhat 节点未运行\n` +
+          `3. 合约地址配置错误\n\n` +
+          `请检查：\n` +
+          `- Hardhat 节点正在运行 (npx hardhat node)\n` +
+          `- MetaMask 连接到 Chain ID ${expectedChainId}\n` +
+          `- RPC URL: ${process.env.NEXT_PUBLIC_RPC_URL}`
+        )
+        setCreating(false)
+        return
+      }
+      
       if (Number(existingId) > 0) {
         alert('你已经拥有数字生命了！ID: ' + existingId.toString())
         setBeingId(Number(existingId))

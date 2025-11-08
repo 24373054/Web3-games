@@ -14,15 +14,35 @@ export default function Home() {
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null)
   const [beingId, setBeingId] = useState<number | null>(null)
   const [selectedNPC, setSelectedNPC] = useState<string | null>(null)
+  const [networkStatus, setNetworkStatus] = useState<{chainId: string, correct: boolean} | null>(null)
 
   useEffect(() => {
     checkConnection()
+    
+    // 监听网络切换
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload()
+      })
+    }
   }, [])
 
   const checkConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       const provider = new ethers.BrowserProvider(window.ethereum)
       setProvider(provider)
+
+      // 检查网络
+      try {
+        const network = await provider.getNetwork()
+        const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID || '31337'
+        setNetworkStatus({
+          chainId: network.chainId.toString(),
+          correct: network.chainId.toString() === expectedChainId
+        })
+      } catch (error) {
+        console.error('检查网络失败:', error)
+      }
 
       const accounts = await provider.listAccounts()
       if (accounts.length > 0) {
@@ -39,12 +59,54 @@ export default function Home() {
 
     try {
       const provider = new ethers.BrowserProvider(window.ethereum)
+      
+      // 先检查网络
+      const network = await provider.getNetwork()
+      const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID || '31337'
+      
+      if (network.chainId.toString() !== expectedChainId) {
+        alert(
+          `⚠️ 网络不匹配！\n\n` +
+          `当前网络 Chain ID: ${network.chainId}\n` +
+          `需要 Chain ID: ${expectedChainId}\n\n` +
+          `请在 MetaMask 中切换到 Hardhat Local 网络：\n` +
+          `- RPC URL: ${process.env.NEXT_PUBLIC_RPC_URL}\n` +
+          `- Chain ID: ${expectedChainId}\n\n` +
+          `或者点击 MetaMask 中的"添加网络"`
+        )
+        
+        // 尝试切换网络
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${parseInt(expectedChainId).toString(16)}` }],
+          })
+        } catch (switchError: any) {
+          // 如果网络不存在，提示用户添加
+          if (switchError.code === 4902) {
+            alert(
+              '请手动添加 Hardhat Local 网络：\n\n' +
+              '1. 打开 MetaMask\n' +
+              '2. 网络下拉菜单 → 添加网络\n' +
+              `3. RPC URL: ${process.env.NEXT_PUBLIC_RPC_URL}\n` +
+              `4. Chain ID: ${expectedChainId}\n` +
+              '5. 货币符号: ETH'
+            )
+          }
+        }
+        return
+      }
+      
       await provider.send("eth_requestAccounts", [])
       const signer = await provider.getSigner()
       const address = await signer.getAddress()
       
       setProvider(provider)
       setAccount(address)
+      setNetworkStatus({
+        chainId: network.chainId.toString(),
+        correct: true
+      })
     } catch (error) {
       console.error('连接钱包失败:', error)
     }
@@ -80,6 +142,11 @@ export default function Home() {
             <div className="text-right">
               <p className="text-xs text-gray-400">已连接</p>
               <p className="contract-text">{account.slice(0, 6)}...{account.slice(-4)}</p>
+              {networkStatus && (
+                <p className={`text-xs mt-1 ${networkStatus.correct ? 'text-green-400' : 'text-red-400'}`}>
+                  {networkStatus.correct ? '✓' : '⚠'} Chain ID: {networkStatus.chainId}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -127,6 +194,29 @@ function remember() external {
       ) : (
         // 主游戏界面
         <div className="container mx-auto px-6 py-8">
+          {/* 网络警告 */}
+          {networkStatus && !networkStatus.correct && (
+            <div className="mb-6 p-4 bg-red-900 bg-opacity-30 border-2 border-red-500 rounded-lg">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div className="flex-1">
+                  <h3 className="text-red-400 font-bold mb-2">网络配置错误！</h3>
+                  <p className="text-sm text-gray-300 mb-2">
+                    MetaMask 连接到了错误的网络 (Chain ID: {networkStatus.chainId})
+                  </p>
+                  <p className="text-sm text-gray-300 mb-3">
+                    请切换到 Hardhat Local 网络 (Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'})
+                  </p>
+                  <div className="text-xs bg-black bg-opacity-50 p-3 rounded">
+                    <p className="text-gray-400 mb-1">正确配置：</p>
+                    <p className="text-yingzhou-cyan">RPC URL: {process.env.NEXT_PUBLIC_RPC_URL}</p>
+                    <p className="text-yingzhou-cyan">Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 左侧：世界状态和玩家信息 */}
             <div className="space-y-6">

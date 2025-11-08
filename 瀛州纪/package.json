@@ -10,6 +10,8 @@
     "export-abi": "node scripts/exportABI.js",
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.js",
+    "deploy:auto": "hardhat run scripts/deploy-and-setup.js --network localhost",
+    "check": "node scripts/check-env.js",
     "airdrop": "hardhat run scripts/airdrop.js --network localhost"
   },
   "dependencies": {

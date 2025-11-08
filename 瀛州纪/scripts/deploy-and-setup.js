@@ -1,0 +1,174 @@
+const hre = require("hardhat");
+const fs = require("fs");
+const path = require("path");
+
+/**
+ * 自动化部署脚本
+ * 1. 部署所有合约
+ * 2. 自动更新 .env.local 文件
+ */
+
+async function main() {
+  console.log("🚀 开始自动化部署瀛州纪智能合约...\n");
+
+  // ========== 部署合约 ==========
+  
+  // 部署 WorldLedger
+  console.log("📜 部署 WorldLedger...");
+  const WorldLedger = await hre.ethers.getContractFactory("WorldLedger");
+  const worldLedger = await WorldLedger.deploy();
+  await worldLedger.waitForDeployment();
+  const worldLedgerAddress = await worldLedger.getAddress();
+  console.log("✅ WorldLedger 部署到:", worldLedgerAddress);
+
+  // 部署 DigitalBeing
+  console.log("\n🧬 部署 DigitalBeing...");
+  const DigitalBeing = await hre.ethers.getContractFactory("DigitalBeing");
+  const digitalBeing = await DigitalBeing.deploy(worldLedgerAddress);
+  await digitalBeing.waitForDeployment();
+  const digitalBeingAddress = await digitalBeing.getAddress();
+  console.log("✅ DigitalBeing 部署到:", digitalBeingAddress);
+
+  // 注册 DigitalBeing 到世界账本
+  console.log("\n📝 注册 DigitalBeing 到世界账本...");
+  const tx1 = await worldLedger.registerDigitalBeing(digitalBeingAddress);
+  await tx1.wait();
+  console.log("✅ DigitalBeing 已注册");
+
+  // 部署 AINPC
+  console.log("\n🤖 部署 AINPC...");
+  const AINPC = await hre.ethers.getContractFactory("AINPC");
+  const ainpc = await AINPC.deploy(worldLedgerAddress);
+  await ainpc.waitForDeployment();
+  const ainpcAddress = await ainpc.getAddress();
+  console.log("✅ AINPC 部署到:", ainpcAddress);
+
+  // 部署 Resource1155
+  console.log("\n💎 部署 Resource1155...");
+  const Resource1155 = await hre.ethers.getContractFactory("Resource1155");
+  const resource = await Resource1155.deploy("https://metadata.yingzhou/{id}.json");
+  await resource.waitForDeployment();
+  const resourceAddress = await resource.getAddress();
+  console.log("✅ Resource1155 部署到:", resourceAddress);
+
+  // 部署 Market
+  console.log("\n🏪 部署 Market...");
+  const Market = await hre.ethers.getContractFactory("Market");
+  const market = await Market.deploy();
+  await market.waitForDeployment();
+  const marketAddress = await market.getAddress();
+  console.log("✅ Market 部署到:", marketAddress);
+
+  // 注册 AINPC 为数字生命
+  console.log("\n📝 注册 AINPC 到世界账本...");
+  const tx2 = await worldLedger.registerDigitalBeing(ainpcAddress);
+  await tx2.wait();
+  console.log("✅ AINPC 已注册");
+
+  console.log("\n" + "=".repeat(60));
+  console.log("🎉 部署完成！");
+  console.log("=".repeat(60));
+  console.log("WorldLedger:     ", worldLedgerAddress);
+  console.log("DigitalBeing:    ", digitalBeingAddress);
+  console.log("AINPC:           ", ainpcAddress);
+  console.log("Resource1155:    ", resourceAddress);
+  console.log("Market:          ", marketAddress);
+  console.log("=".repeat(60) + "\n");
+
+  // ========== 更新 .env.local 文件 ==========
+  
+  console.log("📝 更新 .env.local 文件...\n");
+  
+  const envPath = path.join(__dirname, "..", ".env.local");
+  let envContent = "";
+  let existingEnv = {};
+
+  // 读取现有的 .env.local 文件（如果存在）
+  if (fs.existsSync(envPath)) {
+    console.log("📄 读取现有的 .env.local 文件...");
+    const existingContent = fs.readFileSync(envPath, "utf8");
+    
+    // 解析现有配置
+    existingContent.split("\n").forEach(line => {
+      line = line.trim();
+      if (line && !line.startsWith("#")) {
+        const [key, ...valueParts] = line.split("=");
+        if (key && valueParts.length > 0) {
+          existingEnv[key.trim()] = valueParts.join("=").trim();
+        }
+      }
+    });
+    console.log("✅ 已读取现有配置\n");
+  }
+
+  // 创建新的配置内容
+  const newAddresses = {
+    NEXT_PUBLIC_WORLD_LEDGER_ADDRESS: worldLedgerAddress,
+    NEXT_PUBLIC_DIGITAL_BEING_ADDRESS: digitalBeingAddress,
+    NEXT_PUBLIC_AINPC_ADDRESS: ainpcAddress,
+    NEXT_PUBLIC_RESOURCE1155_ADDRESS: resourceAddress,
+    NEXT_PUBLIC_MARKET_ADDRESS: marketAddress,
+  };
+
+  // 合并配置（新地址覆盖旧地址，保留其他配置）
+  const finalEnv = {
+    ...existingEnv,
+    ...newAddresses,
+    NEXT_PUBLIC_CHAIN_ID: existingEnv.NEXT_PUBLIC_CHAIN_ID || "31337",
+    NEXT_PUBLIC_RPC_URL: existingEnv.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545",
+  };
+
+  // 生成 .env.local 内容
+  envContent = `# 智能合约地址（自动生成 - ${new Date().toLocaleString()}）
+NEXT_PUBLIC_WORLD_LEDGER_ADDRESS=${finalEnv.NEXT_PUBLIC_WORLD_LEDGER_ADDRESS}
+NEXT_PUBLIC_DIGITAL_BEING_ADDRESS=${finalEnv.NEXT_PUBLIC_DIGITAL_BEING_ADDRESS}
+NEXT_PUBLIC_AINPC_ADDRESS=${finalEnv.NEXT_PUBLIC_AINPC_ADDRESS}
+NEXT_PUBLIC_RESOURCE1155_ADDRESS=${finalEnv.NEXT_PUBLIC_RESOURCE1155_ADDRESS}
+NEXT_PUBLIC_MARKET_ADDRESS=${finalEnv.NEXT_PUBLIC_MARKET_ADDRESS}
+
+# 网络配置
+NEXT_PUBLIC_CHAIN_ID=${finalEnv.NEXT_PUBLIC_CHAIN_ID}
+NEXT_PUBLIC_RPC_URL=${finalEnv.NEXT_PUBLIC_RPC_URL}
+`;
+
+  // 保留 DeepSeek AI 配置
+  if (finalEnv.DEEPSEEK_API_KEY) {
+    envContent += `
+# DeepSeek AI 配置
+DEEPSEEK_API_KEY=${finalEnv.DEEPSEEK_API_KEY}
+DEEPSEEK_MODEL=${finalEnv.DEEPSEEK_MODEL || "deepseek-chat"}
+`;
+  }
+
+  // 保留后端私钥
+  if (finalEnv.PRIVATE_KEY) {
+    envContent += `
+# 后端私钥（用于代发交易）
+PRIVATE_KEY=${finalEnv.PRIVATE_KEY}
+`;
+  }
+
+  // 写入文件
+  fs.writeFileSync(envPath, envContent);
+  console.log("✅ .env.local 文件已更新:", envPath);
+  console.log("\n" + "=".repeat(60));
+  console.log("📋 最终配置:");
+  console.log("=".repeat(60));
+  console.log(envContent);
+  console.log("=".repeat(60) + "\n");
+
+  console.log("🎊 全部完成！");
+  console.log("\n📌 下一步：");
+  console.log("   1. 重启前端服务: npm run dev");
+  console.log("   2. 打开浏览器: http://localhost:3000");
+  console.log("   3. 连接 MetaMask 到 Hardhat Local (Chain ID: 31337)");
+  console.log("   4. 开始游戏！\n");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ 部署失败:", error);
+    process.exit(1);
+  });
+
