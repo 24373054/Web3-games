@@ -215,56 +215,31 @@ function remember() external {
       ) : (
         // 主游戏界面
         <div className="relative">
-          {/* 视图切换按钮 - 连接钱包后就显示 */}
-          <div className="absolute top-4 left-4 z-50 flex flex-col gap-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewMode('3d')}
-                  className={`px-4 py-2 border-2 transition-all ${
-                    viewMode === '3d'
-                      ? 'bg-yingzhou-cyan text-black border-yingzhou-cyan'
-                      : 'bg-black/70 text-yingzhou-cyan border-yingzhou-cyan hover:bg-yingzhou-cyan/20'
-                  }`}
-                >
-                  🌐 3D世界
-                </button>
-                <button
-                  onClick={() => setViewMode('2d')}
-                  className={`px-4 py-2 border-2 transition-all ${
-                    viewMode === '2d'
-                      ? 'bg-yingzhou-cyan text-black border-yingzhou-cyan'
-                      : 'bg-black/70 text-yingzhou-cyan border-yingzhou-cyan hover:bg-yingzhou-cyan/20'
-                  }`}
-                >
-                  📋 管理面板
-                </button>
-              </div>
-              
-              {viewMode === '3d' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSceneMode('simple')}
-                    className={`px-3 py-1 text-xs border transition-all ${
-                      sceneMode === 'simple'
-                        ? 'bg-green-500 text-black border-green-500'
-                        : 'bg-black/70 text-green-400 border-green-400 hover:bg-green-500/20'
-                    }`}
-                  >
-                    ✅ 简化版
-                  </button>
-                  <button
-                    onClick={() => setSceneMode('full')}
-                    className={`px-3 py-1 text-xs border transition-all ${
-                      sceneMode === 'full'
-                        ? 'bg-blue-500 text-black border-blue-500'
-                        : 'bg-black/70 text-blue-400 border-blue-400 hover:bg-blue-500/20'
-                    }`}
-                  >
-                    🚀 完整版
-                  </button>
-                </div>
-              )}
+          {/* 场景模式切换（仅在3D视图时显示） */}
+          {viewMode === '3d' && (
+            <div className="absolute top-4 left-4 z-50 flex gap-2">
+              <button
+                onClick={() => setSceneMode('simple')}
+                className={`px-3 py-1 text-xs border transition-all ${
+                  sceneMode === 'simple'
+                    ? 'bg-green-500 text-black border-green-500'
+                    : 'bg-black/70 text-green-400 border-green-400 hover:bg-green-500/20'
+                }`}
+              >
+                ✅ 简化版
+              </button>
+              <button
+                onClick={() => setSceneMode('full')}
+                className={`px-3 py-1 text-xs border transition-all ${
+                  sceneMode === 'full'
+                    ? 'bg-blue-500 text-black border-blue-500'
+                    : 'bg-black/70 text-blue-400 border-blue-400 hover:bg-blue-500/20'
+                }`}
+              >
+                🚀 完整版
+              </button>
             </div>
+          )}
 
           {/* 3D视图 */}
           {viewMode === '3d' && (
@@ -312,7 +287,7 @@ function remember() external {
                       setSelectedNPC(npcId)
                       setShow3DDialog(true)
                     }}
-                    onToggleUI={() => setViewMode('2d')}
+                    onEnterPortal={() => setViewMode('2d')}
                   />
                 ) : (
                   <YingzhouWorld
@@ -323,7 +298,7 @@ function remember() external {
                       setSelectedNPC(npcId)
                       setShow3DDialog(true)
                     }}
-                    onToggleUI={() => setViewMode('2d')}
+                    onEnterPortal={() => setViewMode('2d')}
                   />
                 )}
                 </Suspense>
@@ -356,6 +331,18 @@ function remember() external {
           {/* 2D视图（原有UI） */}
           {viewMode === '2d' && (
             <div className="container mx-auto px-6 py-8">
+              {/* 返回3D世界按钮 */}
+              {beingId !== null && (
+                <div className="mb-6 flex justify-center">
+                  <button
+                    onClick={() => setViewMode('3d')}
+                    className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-2 border-blue-400 hover:from-blue-500 hover:to-purple-500 transition-all transform hover:scale-105 font-bold text-lg shadow-lg shadow-blue-500/50"
+                  >
+                    🌌 进入3D区块链实体世界
+                  </button>
+                </div>
+              )}
+
               {/* 网络警告 */}
               {networkStatus && !networkStatus.correct && (
                 <div className="mb-6 p-4 bg-red-900 bg-opacity-30 border-2 border-red-500 rounded-lg">

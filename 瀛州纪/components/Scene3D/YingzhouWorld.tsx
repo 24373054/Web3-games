@@ -10,7 +10,7 @@ interface YingzhouWorldProps {
   account: string | null
   beingId: number | null
   onNPCInteract: (npcId: string) => void
-  onToggleUI: () => void
+  onEnterPortal: () => void
 }
 
 export default function YingzhouWorld({
@@ -18,9 +18,10 @@ export default function YingzhouWorld({
   account,
   beingId,
   onNPCInteract,
-  onToggleUI
+  onEnterPortal
 }: YingzhouWorldProps) {
   const [interactionTarget, setInteractionTarget] = useState<string | null>(null)
+  const [nearPortal, setNearPortal] = useState<boolean>(false)
 
   const onSceneReady = useCallback(async (scene: Scene, engine: Engine) => {
     // 动态导入 Babylon.js 和 Cannon
@@ -95,35 +96,49 @@ export default function YingzhouWorld({
     // 创建粒子效果
     createParticleEffects(scene, BABYLON)
 
+    // 创建环境装饰元素
+    createEnvironmentElements(scene, BABYLON)
+
     // 添加发光层
     const gl = new BABYLON.GlowLayer('glow', scene)
     gl.intensity = 0.5
+
+    // 持续检测玩家是否靠近传送门
+    scene.registerBeforeRender(() => {
+      const portalCore = scene.getMeshByName('ledgerCore')
+      if (portalCore && camera) {
+        const distance = BABYLON.Vector3.Distance(camera.position, portalCore.position)
+        setNearPortal(distance < 10)  // 10米范围内显示提示
+      }
+    })
 
     // 交互检测（E键）
     scene.onKeyboardObservable.add((kbInfo) => {
       if (kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN) {
         if (kbInfo.event.key === 'e' || kbInfo.event.key === 'E') {
-          checkNPCInteraction(scene, camera)
-        }
-        // Tab键切换UI
-        if (kbInfo.event.key === 'Tab') {
-          kbInfo.event.preventDefault()
-          onToggleUI()
+          checkInteraction(scene, camera)
         }
       }
     })
 
-  }, [onNPCInteract, onToggleUI])
+  }, [onNPCInteract, onEnterPortal])
 
-  const checkNPCInteraction = (scene: any, camera: any) => {
+  const checkInteraction = (scene: any, camera: any) => {
     // 射线检测
-    const ray = camera.getForwardRay(5)
+    const ray = camera.getForwardRay(10)  // 增加检测距离到10米
     const pickInfo = scene.pickWithRay(ray)
 
-    if (pickInfo?.hit && pickInfo.pickedMesh?.metadata?.isNPC) {
-      const npcId = pickInfo.pickedMesh.metadata.npcId
-      setInteractionTarget(npcId)
-      onNPCInteract(npcId)
+    if (pickInfo?.hit && pickInfo.pickedMesh?.metadata) {
+      // 检测是否是NPC
+      if (pickInfo.pickedMesh.metadata.isNPC) {
+        const npcId = pickInfo.pickedMesh.metadata.npcId
+        setInteractionTarget(npcId)
+        onNPCInteract(npcId)
+      }
+      // 检测是否是传送门
+      else if (pickInfo.pickedMesh.metadata.isPortal) {
+        onEnterPortal()
+      }
     }
   }
 
@@ -144,13 +159,21 @@ export default function YingzhouWorld({
           <div className="space-y-1 text-gray-300">
             <div>WASD - 移动</div>
             <div>鼠标 - 视角</div>
-            <div>E - 与NPC交互</div>
-            <div>Tab - 切换2D界面</div>
+            <div>E - 交互</div>
+            <div className="text-purple-400 mt-2">💡 靠近中心传送门可进入管理面板</div>
           </div>
         </div>
 
         {/* 交互提示 */}
-        {interactionTarget && (
+        {nearPortal && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-20 bg-purple-900/90 border-2 border-purple-400 px-8 py-4 rounded-lg">
+            <div className="text-purple-200 text-center text-xl font-bold animate-pulse">
+              🌀 按 E 进入管理面板
+            </div>
+          </div>
+        )}
+        
+        {interactionTarget && !nearPortal && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-20 bg-black/80 border border-yingzhou-cyan px-6 py-3 rounded">
             <div className="text-yingzhou-cyan text-center animate-pulse">
               按 E 与 NPC 交互
@@ -416,13 +439,19 @@ function createSkybox(scene: any, BABYLON: any) {
 
 // 创建世界账本中央结构 - 纯能量核心
 function createWorldLedger(scene: any, BABYLON: any) {
-  // 中央巨大能量球
+  // 中央巨大能量球 - 传送门
   const core = BABYLON.MeshBuilder.CreateSphere(
     'ledgerCore',
     { diameter: 5, segments: 32 },
     scene
   )
   core.position.y = 10
+
+  // 标记为传送门
+  core.metadata = {
+    isPortal: true,
+    portalName: '管理面板传送门'
+  }
 
   const coreMat = new BABYLON.StandardMaterial('coreMat', scene)
   coreMat.emissiveColor = new BABYLON.Color3(0, 1, 1)
@@ -846,5 +875,223 @@ function createParticleEffects(scene: any, BABYLON: any) {
   ambientGlow.updateSpeed = 0.005
 
   ambientGlow.start()
+}
+
+// 创建环境装饰元素
+function createEnvironmentElements(scene: any, BABYLON: any) {
+  // 1. 地面能量网格平台
+  const gridPlatform = BABYLON.MeshBuilder.CreateDisc(
+    'gridPlatform',
+    { radius: 70, tessellation: 64 },
+    scene
+  )
+  gridPlatform.position.y = 0.1
+  gridPlatform.rotation.x = Math.PI / 2
+  
+  const gridMat = new BABYLON.StandardMaterial('gridMat', scene)
+  gridMat.emissiveColor = new BABYLON.Color3(0, 0.3, 0.5)
+  gridMat.alpha = 0.15
+  gridMat.wireframe = true
+  gridPlatform.material = gridMat
+  
+  // 网格脉动
+  scene.registerBeforeRender(() => {
+    const pulse = 0.1 + Math.sin(Date.now() * 0.0005) * 0.05
+    gridMat.alpha = pulse
+  })
+
+  // 2. 多层同心能量环（地面）
+  for (let i = 0; i < 5; i++) {
+    const ring = BABYLON.MeshBuilder.CreateTorus(
+      `groundRing_${i}`,
+      { diameter: 30 + i * 15, thickness: 0.1, tessellation: 48 },
+      scene
+    )
+    ring.position.y = 0.2 + i * 0.1
+    ring.rotation.x = Math.PI / 2
+    
+    const ringMat = new BABYLON.StandardMaterial(`groundRingMat_${i}`, scene)
+    ringMat.emissiveColor = new BABYLON.Color3(0, 0.4 + i * 0.1, 0.6 + i * 0.05)
+    ringMat.alpha = 0.3 - i * 0.04
+    ring.material = ringMat
+    
+    // 旋转动画
+    const rotSpeed = (i % 2 === 0 ? 0.0002 : -0.0003) * (1 + i * 0.1)
+    scene.registerBeforeRender(() => {
+      ring.rotation.z += rotSpeed
+    })
+  }
+
+  // 3. 垂直能量柱（8根，环绕中央）
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const radius = 40
+    
+    const pillar = BABYLON.MeshBuilder.CreateCylinder(
+      `energyPillar_${i}`,
+      { height: 30, diameter: 0.3, tessellation: 16 },
+      scene
+    )
+    pillar.position = new BABYLON.Vector3(
+      Math.cos(angle) * radius,
+      15,
+      Math.sin(angle) * radius
+    )
+    
+    const pillarMat = new BABYLON.StandardMaterial(`pillarMat_${i}`, scene)
+    pillarMat.emissiveColor = new BABYLON.Color3(0, 0.6, 1)
+    pillarMat.alpha = 0.25
+    pillar.material = pillarMat
+    
+    // 脉冲效果
+    const phase = i * Math.PI * 0.25
+    scene.registerBeforeRender(() => {
+      const pulse = 0.15 + Math.sin(Date.now() * 0.003 + phase) * 0.1
+      pillarMat.alpha = pulse
+    })
+  }
+
+  // 4. 漂浮的能量晶体（12个，分布在空间中）
+  const crystalPositions = [
+    [25, 8, 25], [-25, 12, 25], [25, 15, -25], [-25, 8, -25],
+    [35, 10, 0], [-35, 14, 0], [0, 18, 35], [0, 9, -35],
+    [20, 20, 15], [-20, 7, -15], [15, 16, -20], [-15, 11, 20]
+  ]
+  
+  crystalPositions.forEach((pos, i) => {
+    const crystal = BABYLON.MeshBuilder.CreatePolyhedron(
+      `crystal_${i}`,
+      { type: 1, size: 1.5 },
+      scene
+    )
+    crystal.position = new BABYLON.Vector3(pos[0], pos[1], pos[2])
+    
+    const crystalMat = new BABYLON.StandardMaterial(`crystalMat_${i}`, scene)
+    const hue = (i / crystalPositions.length) * 0.3
+    crystalMat.emissiveColor = new BABYLON.Color3(0, 0.5 + hue, 1 - hue)
+    crystalMat.alpha = 0.5
+    crystalMat.specularPower = 128
+    crystal.material = crystalMat
+    
+    // 旋转和悬浮
+    const phase = Math.random() * Math.PI * 2
+    const rotSpeed = (Math.random() - 0.5) * 0.02
+    scene.registerBeforeRender(() => {
+      const time = Date.now() * 0.001
+      crystal.rotation.y += rotSpeed
+      crystal.rotation.x += rotSpeed * 0.5
+      crystal.position.y = pos[1] + Math.sin(time + phase) * 1.5
+      
+      // 发光脉动
+      const pulse = 0.3 + Math.sin(time * 2 + phase) * 0.2
+      crystalMat.alpha = pulse
+    })
+  })
+
+  // 5. 从中央核心延伸的能量连接线（连接到8个主要方向）
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const points = [
+      new BABYLON.Vector3(0, 10, 0),  // 中心点
+      new BABYLON.Vector3(
+        Math.cos(angle) * 50,
+        8,
+        Math.sin(angle) * 50
+      )  // 外围点
+    ]
+    
+    const line = BABYLON.MeshBuilder.CreateTube(
+      `energyLine_${i}`,
+      {
+        path: points,
+        radius: 0.08,
+        tessellation: 8,
+        updatable: false
+      },
+      scene
+    )
+    
+    const lineMat = new BABYLON.StandardMaterial(`lineMat_${i}`, scene)
+    lineMat.emissiveColor = new BABYLON.Color3(0, 0.8, 1)
+    lineMat.alpha = 0.3
+    line.material = lineMat
+    
+    // 能量流动效果（通过alpha变化模拟）
+    const phase = i * Math.PI * 0.25
+    scene.registerBeforeRender(() => {
+      const flow = 0.2 + Math.sin(Date.now() * 0.005 + phase) * 0.15
+      lineMat.alpha = flow
+    })
+  }
+
+  // 6. 环绕式螺旋光带
+  const helixPoints: any[] = []
+  const helixRadius = 60
+  const helixHeight = 40
+  const helixTurns = 3
+  const helixSegments = 200
+  
+  for (let i = 0; i <= helixSegments; i++) {
+    const t = i / helixSegments
+    const angle = t * Math.PI * 2 * helixTurns
+    helixPoints.push(new BABYLON.Vector3(
+      Math.cos(angle) * helixRadius,
+      t * helixHeight - helixHeight / 2 + 10,
+      Math.sin(angle) * helixRadius
+    ))
+  }
+  
+  const helix = BABYLON.MeshBuilder.CreateTube(
+    'helix',
+    {
+      path: helixPoints,
+      radius: 0.15,
+      tessellation: 8,
+      updatable: false
+    },
+    scene
+  )
+  
+  const helixMat = new BABYLON.StandardMaterial('helixMat', scene)
+  helixMat.emissiveColor = new BABYLON.Color3(0.3, 0.7, 1)
+  helixMat.alpha = 0.4
+  helix.material = helixMat
+  
+  // 螺旋旋转
+  scene.registerBeforeRender(() => {
+    helix.rotation.y += 0.0003
+  })
+
+  // 7. 漂浮的数据节点（小球，代表数据）
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const radius = 20 + Math.random() * 40
+    const height = Math.random() * 25
+    
+    const dataNode = BABYLON.MeshBuilder.CreateSphere(
+      `dataNode_${i}`,
+      { diameter: 0.5, segments: 8 },
+      scene
+    )
+    dataNode.position = new BABYLON.Vector3(
+      Math.cos(angle) * radius,
+      height,
+      Math.sin(angle) * radius
+    )
+    
+    const nodeMat = new BABYLON.StandardMaterial(`nodeMat_${i}`, scene)
+    nodeMat.emissiveColor = new BABYLON.Color3(0.2, 0.9, 1)
+    nodeMat.alpha = 0.6
+    dataNode.material = nodeMat
+    
+    // 环绕旋转
+    const orbitSpeed = 0.0001 + Math.random() * 0.0002
+    const initialAngle = angle
+    scene.registerBeforeRender(() => {
+      const time = Date.now() * orbitSpeed
+      dataNode.position.x = Math.cos(initialAngle + time) * radius
+      dataNode.position.z = Math.sin(initialAngle + time) * radius
+    })
+  }
 }
 
