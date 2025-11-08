@@ -31,6 +31,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# 但保留示例文件
+!.env.example
+!.env.local.example
+
 # Hardhat
 cache/
 artifacts/

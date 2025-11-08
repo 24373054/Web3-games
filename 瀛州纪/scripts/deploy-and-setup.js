@@ -134,17 +134,30 @@ NEXT_PUBLIC_RPC_URL=${finalEnv.NEXT_PUBLIC_RPC_URL}
   // 保留 DeepSeek AI 配置
   if (finalEnv.DEEPSEEK_API_KEY) {
     envContent += `
-# DeepSeek AI 配置
+# DeepSeek AI 配置（从现有配置保留）
 DEEPSEEK_API_KEY=${finalEnv.DEEPSEEK_API_KEY}
 DEEPSEEK_MODEL=${finalEnv.DEEPSEEK_MODEL || "deepseek-chat"}
+`;
+  } else {
+    envContent += `
+# DeepSeek AI 配置（可选）
+# 从 https://platform.deepseek.com/ 获取 API Key
+# DEEPSEEK_API_KEY=
+# DEEPSEEK_MODEL=deepseek-chat
 `;
   }
 
   // 保留后端私钥
   if (finalEnv.PRIVATE_KEY) {
     envContent += `
-# 后端私钥（用于代发交易）
+# 后端私钥（仅开发环境，从现有配置保留）
 PRIVATE_KEY=${finalEnv.PRIVATE_KEY}
+`;
+  } else {
+    envContent += `
+# 后端私钥（从 npx hardhat node 输出中复制）
+# ⚠️ 仅用于本地测试，不要使用真实资金的私钥
+# PRIVATE_KEY=
 `;
   }
 
