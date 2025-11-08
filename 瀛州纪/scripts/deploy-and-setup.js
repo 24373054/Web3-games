@@ -59,20 +59,106 @@ async function main() {
   const marketAddress = await market.getAddress();
   console.log("✅ Market 部署到:", marketAddress);
 
+  // 部署 EpochManager (新增)
+  console.log("\n⏳ 部署 EpochManager...");
+  const EpochManager = await hre.ethers.getContractFactory("EpochManager");
+  const epochManager = await EpochManager.deploy(
+    worldLedgerAddress,
+    digitalBeingAddress,
+    ainpcAddress
+  );
+  await epochManager.waitForDeployment();
+  const epochManagerAddress = await epochManager.getAddress();
+  console.log("✅ EpochManager 部署到:", epochManagerAddress);
+
+  // 部署 MemoryFragment (新增)
+  console.log("\n💎 部署 MemoryFragment...");
+  const MemoryFragment = await hre.ethers.getContractFactory("MemoryFragment");
+  const memoryFragment = await MemoryFragment.deploy();
+  await memoryFragment.waitForDeployment();
+  const memoryFragmentAddress = await memoryFragment.getAddress();
+  console.log("✅ MemoryFragment 部署到:", memoryFragmentAddress);
+
+  // 部署 AINPC_Extended (新增)
+  console.log("\n🤖 部署 AINPC_Extended...");
+  const AINPCExtended = await hre.ethers.getContractFactory("AINPC_Extended");
+  const ainpcExtended = await AINPCExtended.deploy(
+    worldLedgerAddress,
+    epochManagerAddress,
+    memoryFragmentAddress
+  );
+  await ainpcExtended.waitForDeployment();
+  const ainpcExtendedAddress = await ainpcExtended.getAddress();
+  console.log("✅ AINPC_Extended 部署到:", ainpcExtendedAddress);
+
+  // 部署 MiniGameManager (新增)
+  console.log("\n🎮 部署 MiniGameManager...");
+  const MiniGameManager = await hre.ethers.getContractFactory("MiniGameManager");
+  const miniGameManager = await MiniGameManager.deploy(epochManagerAddress);
+  await miniGameManager.waitForDeployment();
+  const miniGameManagerAddress = await miniGameManager.getAddress();
+  console.log("✅ MiniGameManager 部署到:", miniGameManagerAddress);
+
+  // 设置授权
+  console.log("\n🔐 配置授权关系...");
+  
   // 注册 AINPC 为数字生命
-  console.log("\n📝 注册 AINPC 到世界账本...");
+  console.log("  - 注册 AINPC 到世界账本...");
   const tx2 = await worldLedger.registerDigitalBeing(ainpcAddress);
   await tx2.wait();
-  console.log("✅ AINPC 已注册");
+  console.log("  ✅ AINPC 已注册");
+
+  // 注册 AINPC_Extended 为数字生命
+  console.log("  - 注册 AINPC_Extended 到世界账本...");
+  const tx2b = await worldLedger.registerDigitalBeing(ainpcExtendedAddress);
+  await tx2b.wait();
+  console.log("  ✅ AINPC_Extended 已注册");
+
+  // 设置 EpochManager 的授权合约地址
+  console.log("  - 设置 EpochManager 的授权合约...");
+  const tx3 = await epochManager.setAuthorizedContracts(
+    memoryFragmentAddress,
+    ainpcExtendedAddress
+  );
+  await tx3.wait();
+  console.log("  ✅ EpochManager 授权配置完成");
+
+  // 授权 EpochManager 铸造碎片
+  console.log("  - 授权 EpochManager 铸造碎片...");
+  const tx4 = await memoryFragment.setAuthorizedMinter(epochManagerAddress, true);
+  await tx4.wait();
+  console.log("  ✅ EpochManager 已授权");
+
+  // 授权 AINPC 铸造碎片（用于基础功能）
+  console.log("  - 授权 AINPC 铸造碎片...");
+  const tx5 = await memoryFragment.setAuthorizedMinter(ainpcAddress, true);
+  await tx5.wait();
+  console.log("  ✅ AINPC 已授权");
+
+  // 授权 AINPC_Extended 铸造碎片（用于关键词触发）
+  console.log("  - 授权 AINPC_Extended 铸造碎片...");
+  const tx6 = await memoryFragment.setAuthorizedMinter(ainpcExtendedAddress, true);
+  await tx6.wait();
+  console.log("  ✅ AINPC_Extended 已授权");
+
+  // 授权 MiniGameManager 铸造碎片（用于游戏奖励）
+  console.log("  - 授权 MiniGameManager 铸造碎片...");
+  const tx7 = await memoryFragment.setAuthorizedMinter(miniGameManagerAddress, true);
+  await tx7.wait();
+  console.log("  ✅ MiniGameManager 已授权");
 
   console.log("\n" + "=".repeat(60));
   console.log("🎉 部署完成！");
   console.log("=".repeat(60));
-  console.log("WorldLedger:     ", worldLedgerAddress);
-  console.log("DigitalBeing:    ", digitalBeingAddress);
-  console.log("AINPC:           ", ainpcAddress);
-  console.log("Resource1155:    ", resourceAddress);
-  console.log("Market:          ", marketAddress);
+  console.log("WorldLedger:       ", worldLedgerAddress);
+  console.log("DigitalBeing:      ", digitalBeingAddress);
+  console.log("AINPC:             ", ainpcAddress);
+  console.log("AINPC_Extended:    ", ainpcExtendedAddress);
+  console.log("Resource1155:      ", resourceAddress);
+  console.log("Market:            ", marketAddress);
+  console.log("EpochManager:      ", epochManagerAddress);
+  console.log("MemoryFragment:    ", memoryFragmentAddress);
+  console.log("MiniGameManager:   ", miniGameManagerAddress);
   console.log("=".repeat(60) + "\n");
 
   // ========== 更新 .env.local 文件 ==========
@@ -106,8 +192,12 @@ async function main() {
     NEXT_PUBLIC_WORLD_LEDGER_ADDRESS: worldLedgerAddress,
     NEXT_PUBLIC_DIGITAL_BEING_ADDRESS: digitalBeingAddress,
     NEXT_PUBLIC_AINPC_ADDRESS: ainpcAddress,
+    NEXT_PUBLIC_AINPC_EXTENDED_ADDRESS: ainpcExtendedAddress,
     NEXT_PUBLIC_RESOURCE1155_ADDRESS: resourceAddress,
     NEXT_PUBLIC_MARKET_ADDRESS: marketAddress,
+    NEXT_PUBLIC_EPOCH_MANAGER_ADDRESS: epochManagerAddress,
+    NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS: memoryFragmentAddress,
+    NEXT_PUBLIC_MINIGAME_MANAGER_ADDRESS: miniGameManagerAddress,
   };
 
   // 合并配置（新地址覆盖旧地址，保留其他配置）
@@ -125,6 +215,12 @@ NEXT_PUBLIC_DIGITAL_BEING_ADDRESS=${finalEnv.NEXT_PUBLIC_DIGITAL_BEING_ADDRESS}
 NEXT_PUBLIC_AINPC_ADDRESS=${finalEnv.NEXT_PUBLIC_AINPC_ADDRESS}
 NEXT_PUBLIC_RESOURCE1155_ADDRESS=${finalEnv.NEXT_PUBLIC_RESOURCE1155_ADDRESS}
 NEXT_PUBLIC_MARKET_ADDRESS=${finalEnv.NEXT_PUBLIC_MARKET_ADDRESS}
+
+# 剧情系统合约地址
+NEXT_PUBLIC_EPOCH_MANAGER_ADDRESS=${finalEnv.NEXT_PUBLIC_EPOCH_MANAGER_ADDRESS}
+NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS=${finalEnv.NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS}
+NEXT_PUBLIC_AINPC_EXTENDED_ADDRESS=${finalEnv.NEXT_PUBLIC_AINPC_EXTENDED_ADDRESS}
+NEXT_PUBLIC_MINIGAME_MANAGER_ADDRESS=${finalEnv.NEXT_PUBLIC_MINIGAME_MANAGER_ADDRESS}
 
 # 网络配置
 NEXT_PUBLIC_CHAIN_ID=${finalEnv.NEXT_PUBLIC_CHAIN_ID}

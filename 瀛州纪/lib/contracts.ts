@@ -6,6 +6,15 @@ const DigitalBeingABI = require('./abis/DigitalBeing.json')
 const AINPCABI = require('./abis/AINPC.json')
 const Resource1155ABI = require('./abis/Resource1155.json')
 const MarketABI = require('./abis/Market.json')
+// 新合约ABI（部署后自动生成）
+let EpochManagerABI: any = []
+let MemoryFragmentABI: any = []
+try {
+  EpochManagerABI = require('./abis/EpochManager.json')
+  MemoryFragmentABI = require('./abis/MemoryFragment.json')
+} catch (e) {
+  // ABI文件尚未生成，等待部署
+}
 
 // 获取合约地址（从环境变量）
 export const getContractAddresses = () => {
@@ -14,7 +23,9 @@ export const getContractAddresses = () => {
     digitalBeing: process.env.NEXT_PUBLIC_DIGITAL_BEING_ADDRESS || '',
     ainpc: process.env.NEXT_PUBLIC_AINPC_ADDRESS || '',
     resource1155: process.env.NEXT_PUBLIC_RESOURCE1155_ADDRESS || '',
-    market: process.env.NEXT_PUBLIC_MARKET_ADDRESS || ''
+    market: process.env.NEXT_PUBLIC_MARKET_ADDRESS || '',
+    epochManager: process.env.NEXT_PUBLIC_EPOCH_MANAGER_ADDRESS || '',
+    memoryFragment: process.env.NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS || ''
   }
 }
 
@@ -65,6 +76,19 @@ export function getMarketContract(signerOrProvider: ethers.Signer | ethers.Provi
   const addresses = getContractAddresses()
   const validAddress = validateAddress(addresses.market, 'Market')
   return new ethers.Contract(validAddress, MarketABI, signerOrProvider)
+}
+
+// 剧情系统合约（新增）
+export function getEpochManagerContract(signerOrProvider: ethers.Signer | ethers.Provider) {
+  const addresses = getContractAddresses()
+  const validAddress = validateAddress(addresses.epochManager, 'EpochManager')
+  return new ethers.Contract(validAddress, EpochManagerABI, signerOrProvider)
+}
+
+export function getMemoryFragmentContract(signerOrProvider: ethers.Signer | ethers.Provider) {
+  const addresses = getContractAddresses()
+  const validAddress = validateAddress(addresses.memoryFragment, 'MemoryFragment')
+  return new ethers.Contract(validAddress, MemoryFragmentABI, signerOrProvider)
 }
 
 // 事件类型枚举

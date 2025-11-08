@@ -8,6 +8,8 @@ import DigitalBeingCard from '@/components/DigitalBeingCard'
 import NPCList from '@/components/NPCList'
 import DialogueInterface from '@/components/DialogueInterface'
 import EventTimeline from '@/components/EventTimeline'
+import FragmentGallery from '@/components/FragmentGallery'
+import EpochPanel from '@/components/EpochPanel'
 
 // 动态导入3D组件（仅客户端）
 const YingzhouWorld = lazy(() => import('@/components/Scene3D/YingzhouWorld'))
@@ -15,6 +17,7 @@ const SimpleWorld = lazy(() => import('@/components/Scene3D/SimpleWorld'))
 
 type ViewMode = '3d' | '2d'
 type SceneMode = 'full' | 'simple'
+type PanelTab = 'dialogue' | 'fragments' | 'world'
 
 export default function Home() {
   const [account, setAccount] = useState<string | null>(null)
@@ -25,6 +28,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>('3d')
   const [sceneMode, setSceneMode] = useState<SceneMode>('simple')
   const [show3DDialog, setShow3DDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState<PanelTab>('dialogue')
 
   useEffect(() => {
     checkConnection()
@@ -378,25 +382,81 @@ function remember() external {
               />
             </div>
 
-            {/* 中间：对话界面 */}
+            {/* 中间：标签页面板 */}
             <div className="lg:col-span-2 space-y-6">
               {beingId !== null ? (
                 <>
-                  <NPCList 
-                    provider={provider}
-                    selectedNPC={selectedNPC}
-                    setSelectedNPC={setSelectedNPC}
-                  />
-                  
-                  {selectedNPC && (
-                    <DialogueInterface
+                  {/* 标签切换 */}
+                  <div className="flex gap-2 border-b border-gray-700 pb-2">
+                    <button
+                      onClick={() => setActiveTab('dialogue')}
+                      className={`px-4 py-2 rounded-t-lg transition-all ${
+                        activeTab === 'dialogue'
+                          ? 'bg-yingzhou-cyan text-black font-bold'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      💬 AI对话
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('fragments')}
+                      className={`px-4 py-2 rounded-t-lg transition-all ${
+                        activeTab === 'fragments'
+                          ? 'bg-yingzhou-cyan text-black font-bold'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      📚 记忆碎片
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('world')}
+                      className={`px-4 py-2 rounded-t-lg transition-all ${
+                        activeTab === 'world'
+                          ? 'bg-yingzhou-cyan text-black font-bold'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      🌌 纪元系统
+                    </button>
+                  </div>
+
+                  {/* 对话标签页 */}
+                  {activeTab === 'dialogue' && (
+                    <>
+                      <NPCList 
+                        provider={provider}
+                        selectedNPC={selectedNPC}
+                        setSelectedNPC={setSelectedNPC}
+                      />
+                      
+                      {selectedNPC && (
+                        <DialogueInterface
+                          provider={provider}
+                          beingId={beingId}
+                          npcId={selectedNPC}
+                        />
+                      )}
+
+                      <EventTimeline provider={provider} />
+                    </>
+                  )}
+
+                  {/* 碎片收藏标签页 */}
+                  {activeTab === 'fragments' && (
+                    <FragmentGallery 
                       provider={provider}
-                      beingId={beingId}
-                      npcId={selectedNPC}
+                      account={account}
                     />
                   )}
 
-                  <EventTimeline provider={provider} />
+                  {/* 纪元系统标签页 */}
+                  {activeTab === 'world' && (
+                    <EpochPanel 
+                      provider={provider}
+                      account={account}
+                      beingId={beingId}
+                    />
+                  )}
                 </>
               ) : (
                 <div className="digital-frame text-center py-20">
