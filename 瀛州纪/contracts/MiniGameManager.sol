@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./EpochManager.sol";
+import "./MemoryFragment.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -27,6 +28,7 @@ contract MiniGameManager is Ownable {
     }
     
     EpochManager public epochManager;
+    MemoryFragment public memoryFragment;
     
     // 玩家的游戏成绩记录
     mapping(address => mapping(uint8 => GameScore)) public playerHighScores;
@@ -41,8 +43,9 @@ contract MiniGameManager is Ownable {
     event GameCompleted(address indexed player, uint8 gameType, uint256 score, uint256 completionPercent);
     event FragmentRewarded(address indexed player, uint8 gameType, uint256 fragmentId);
     
-    constructor(address _epochManager) Ownable(msg.sender) {
+    constructor(address _epochManager, address _memoryFragment) Ownable(msg.sender) {
         epochManager = EpochManager(_epochManager);
+        memoryFragment = MemoryFragment(_memoryFragment);
         _initializeGameFragmentMapping();
     }
     
@@ -118,14 +121,19 @@ contract MiniGameManager is Ownable {
         uint256 fragmentId = gameToFragment[gameType];
         
         // 检查玩家是否已拥有此碎片
-        // 注意：实际检查需要调用 MemoryFragment 合约
-        // 这里简化处理，直接通过 EpochManager 记录碎片收集
-        
-        try epochManager.recordFragmentCollection(player, fragmentId) {
-            emit FragmentRewarded(player, gameType, fragmentId);
-        } catch {
-            // 玩家可能已拥有此碎片，忽略错误
+        uint256 balance = memoryFragment.balanceOf(player, fragmentId);
+        if (balance > 0) {
+            // 玩家已拥有此碎片，不再铸造
+            return;
         }
+        
+        // 1. 铸造碎片NFT到玩家钱包
+        memoryFragment.mint(player, fragmentId, 1, "");
+        
+        // 2. 记录到纪元管理器（用于纪元推进条件）
+        epochManager.recordFragmentCollection(player, fragmentId);
+        
+        emit FragmentRewarded(player, gameType, fragmentId);
     }
     
     /**

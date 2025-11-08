@@ -94,7 +94,7 @@ async function main() {
   // 部署 MiniGameManager (新增)
   console.log("\n🎮 部署 MiniGameManager...");
   const MiniGameManager = await hre.ethers.getContractFactory("MiniGameManager");
-  const miniGameManager = await MiniGameManager.deploy(epochManagerAddress);
+  const miniGameManager = await MiniGameManager.deploy(epochManagerAddress, memoryFragmentAddress);
   await miniGameManager.waitForDeployment();
   const miniGameManagerAddress = await miniGameManager.getAddress();
   console.log("✅ MiniGameManager 部署到:", miniGameManagerAddress);
@@ -118,7 +118,8 @@ async function main() {
   console.log("  - 设置 EpochManager 的授权合约...");
   const tx3 = await epochManager.setAuthorizedContracts(
     memoryFragmentAddress,
-    ainpcExtendedAddress
+    ainpcExtendedAddress,
+    miniGameManagerAddress
   );
   await tx3.wait();
   console.log("  ✅ EpochManager 授权配置完成");

@@ -431,6 +431,19 @@
   },
   {
     "inputs": [],
+    "name": "miniGameManagerContract",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "owner",
     "outputs": [
       {
@@ -556,6 +569,11 @@
       {
         "internalType": "address",
         "name": "_ainpcExtended",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_miniGameManager",
         "type": "address"
       }
     ],

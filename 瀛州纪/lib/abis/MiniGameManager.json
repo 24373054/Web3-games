@@ -5,6 +5,11 @@
         "internalType": "address",
         "name": "_epochManager",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_memoryFragment",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -263,6 +268,19 @@
         "internalType": "struct MiniGameManager.GameScore",
         "name": "",
         "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "memoryFragment",
+    "outputs": [
+      {
+        "internalType": "contract MemoryFragment",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

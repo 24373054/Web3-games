@@ -77,24 +77,24 @@ export default function EpochPanel({
   }
 
   const handleAdvanceEpoch = async () => {
-    if (!provider || !account || !beingId) return
+    if (!provider || !account) return
     
     try {
       const signer = await provider.getSigner()
-      const digitalBeingContract = getDigitalBeingContract(signer)
+      const epochManagerContract = getEpochManagerContract(signer)
       
-      // 通过 DigitalBeing 合约调用 advanceEpoch
-      const tx = await digitalBeingContract.advanceEpoch(beingId)
+      // 通过 EpochManager 合约推进纪元
+      const tx = await epochManagerContract.advanceEpoch(account)
       await tx.wait()
       
       alert(`✨ 成功推进到 ${EPOCH_NAMES[currentEpoch + 1]} 纪元！`)
       loadEpochInfo()
     } catch (error: any) {
       console.error('推进纪元失败:', error)
-      if (error.message.includes('Not enough fragments')) {
-        alert('❌ 推进失败：收集的碎片不足')
-      } else if (error.message.includes('No more epochs')) {
+      if (error.message.includes('Already at final epoch')) {
         alert('⚠️ 已经到达最后纪元')
+      } else if (error.message.includes('Not enough fragments')) {
+        alert('❌ 推进失败：收集的碎片不足')
       } else {
         alert(`❌ 推进失败：${error.message}`)
       }

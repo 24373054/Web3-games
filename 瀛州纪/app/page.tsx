@@ -10,6 +10,8 @@ import DialogueInterface from '@/components/DialogueInterface'
 import EventTimeline from '@/components/EventTimeline'
 import FragmentGallery from '@/components/FragmentGallery'
 import EpochPanel from '@/components/EpochPanel'
+import PlayerProgress from '@/components/PlayerProgress'
+import MemorySortGame from '@/components/MiniGames/MemorySortGame'
 
 // 动态导入3D组件（仅客户端）
 const YingzhouWorld = lazy(() => import('@/components/Scene3D/YingzhouWorld'))
@@ -17,7 +19,7 @@ const SimpleWorld = lazy(() => import('@/components/Scene3D/SimpleWorld'))
 
 type ViewMode = '3d' | '2d'
 type SceneMode = 'full' | 'simple'
-type PanelTab = 'dialogue' | 'fragments' | 'world'
+type PanelTab = 'dialogue' | 'fragments' | 'world' | 'games' | 'progress'
 
 export default function Home() {
   const [account, setAccount] = useState<string | null>(null)
@@ -387,7 +389,7 @@ function remember() external {
               {beingId !== null ? (
                 <>
                   {/* 标签切换 */}
-                  <div className="flex gap-2 border-b border-gray-700 pb-2">
+                  <div className="flex gap-2 border-b border-gray-700 pb-2 flex-wrap">
                     <button
                       onClick={() => setActiveTab('dialogue')}
                       className={`px-4 py-2 rounded-t-lg transition-all ${
@@ -406,7 +408,7 @@ function remember() external {
                           : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                       }`}
                     >
-                      📚 记忆碎片
+                      💎 记忆碎片
                     </button>
                     <button
                       onClick={() => setActiveTab('world')}
@@ -416,7 +418,27 @@ function remember() external {
                           : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                       }`}
                     >
-                      🌌 纪元系统
+                      ⏳ 纪元系统
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('games')}
+                      className={`px-4 py-2 rounded-t-lg transition-all ${
+                        activeTab === 'games'
+                          ? 'bg-yingzhou-cyan text-black font-bold'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      🎮 小游戏
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('progress')}
+                      className={`px-4 py-2 rounded-t-lg transition-all ${
+                        activeTab === 'progress'
+                          ? 'bg-yingzhou-cyan text-black font-bold'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      📊 玩家进度
                     </button>
                   </div>
 
@@ -455,6 +477,69 @@ function remember() external {
                       provider={provider}
                       account={account}
                       beingId={beingId}
+                    />
+                  )}
+
+                  {/* 小游戏标签页 */}
+                  {activeTab === 'games' && (
+                    <div className="space-y-6">
+                      <div className="digital-frame">
+                        <h2 className="text-2xl text-yingzhou-cyan mb-4 glow-text">
+                          🎮 小游戏中心
+                        </h2>
+                        <p className="text-gray-400 mb-6">
+                          通过小游戏获得记忆碎片，推进纪元！
+                        </p>
+                        
+                        <Suspense fallback={<div className="text-center py-8 text-gray-400">加载中...</div>}>
+                          <MemorySortGame 
+                            onComplete={async (score, completion) => {
+                              console.log('游戏完成:', score, completion)
+                              
+                              if (!provider || !account) {
+                                alert('❌ 请先连接钱包')
+                                return
+                              }
+
+                              try {
+                                // 提交成绩到合约
+                                const signer = await provider.getSigner()
+                                const { getMiniGameManagerContract } = await import('@/lib/contracts')
+                                const gameManager = getMiniGameManagerContract(signer)
+                                
+                                console.log('📤 提交游戏成绩到合约...')
+                                const tx = await gameManager.submitGameScore(
+                                  0, // GameType.MemorySort
+                                  score,
+                                  completion
+                                )
+                                
+                                alert(`⏳ 正在提交成绩...\n请在MetaMask中确认交易`)
+                                await tx.wait()
+                                
+                                if (completion >= 60) {
+                                  alert(`🎉 游戏完成！\n得分：${score}\n完成度：${completion}%\n\n✨ 恭喜获得碎片#0（创世之光）！\n\n请前往"记忆碎片"标签页查看`)
+                                } else {
+                                  alert(`🎮 游戏完成！\n得分：${score}\n完成度：${completion}%\n\n需要完成度≥60%才能获得碎片\n请再试一次！`)
+                                }
+                              } catch (error: any) {
+                                console.error('提交成绩失败:', error)
+                                alert(`❌ 提交失败：${error.message}`)
+                              }
+                            }}
+                            provider={provider}
+                            account={account}
+                          />
+                        </Suspense>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 玩家进度标签页 */}
+                  {activeTab === 'progress' && (
+                    <PlayerProgress 
+                      provider={provider}
+                      account={account}
                     />
                   )}
                 </>

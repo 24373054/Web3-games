@@ -9,9 +9,11 @@ const MarketABI = require('./abis/Market.json')
 // 新合约ABI（部署后自动生成）
 let EpochManagerABI: any = []
 let MemoryFragmentABI: any = []
+let MiniGameManagerABI: any = []
 try {
   EpochManagerABI = require('./abis/EpochManager.json')
   MemoryFragmentABI = require('./abis/MemoryFragment.json')
+  MiniGameManagerABI = require('./abis/MiniGameManager.json')
 } catch (e) {
   // ABI文件尚未生成，等待部署
 }
@@ -25,7 +27,8 @@ export const getContractAddresses = () => {
     resource1155: process.env.NEXT_PUBLIC_RESOURCE1155_ADDRESS || '',
     market: process.env.NEXT_PUBLIC_MARKET_ADDRESS || '',
     epochManager: process.env.NEXT_PUBLIC_EPOCH_MANAGER_ADDRESS || '',
-    memoryFragment: process.env.NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS || ''
+    memoryFragment: process.env.NEXT_PUBLIC_MEMORY_FRAGMENT_ADDRESS || '',
+    miniGameManager: process.env.NEXT_PUBLIC_MINIGAME_MANAGER_ADDRESS || ''
   }
 }
 
@@ -89,6 +92,12 @@ export function getMemoryFragmentContract(signerOrProvider: ethers.Signer | ethe
   const addresses = getContractAddresses()
   const validAddress = validateAddress(addresses.memoryFragment, 'MemoryFragment')
   return new ethers.Contract(validAddress, MemoryFragmentABI, signerOrProvider)
+}
+
+export function getMiniGameManagerContract(signerOrProvider: ethers.Signer | ethers.Provider) {
+  const addresses = getContractAddresses()
+  const validAddress = validateAddress(addresses.miniGameManager, 'MiniGameManager')
+  return new ethers.Contract(validAddress, MiniGameManagerABI, signerOrProvider)
 }
 
 // 事件类型枚举

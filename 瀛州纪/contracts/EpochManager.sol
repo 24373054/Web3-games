@@ -62,6 +62,7 @@ contract EpochManager {
     // 授权的碎片铸造者
     address public memoryFragmentContract;
     address public ainpcExtendedContract;
+    address public miniGameManagerContract;
 
     // 事件
     event EpochAdvanced(
@@ -261,8 +262,14 @@ contract EpochManager {
         uint8 currentEpoch = playerEpoch[player];
         require(currentEpoch < 4, "Already at final epoch");
 
-        // 验证推进条件（简化版本，待完善）
-        // TODO: 完整验证逻辑
+        // 验证推进条件
+        AdvancementRequirement memory req = requirements[currentEpoch];
+        
+        // 检查碎片数量
+        require(
+            playerFragmentCount[player] >= req.minFragments,
+            unicode"碎片数量不足，无法推进纪元"
+        );
 
         uint8 newEpoch = currentEpoch + 1;
         playerEpoch[player] = newEpoch;
@@ -331,10 +338,12 @@ contract EpochManager {
      */
     function setAuthorizedContracts(
         address _memoryFragment,
-        address _ainpcExtended
+        address _ainpcExtended,
+        address _miniGameManager
     ) external onlyOwner {
         memoryFragmentContract = _memoryFragment;
         ainpcExtendedContract = _ainpcExtended;
+        miniGameManagerContract = _miniGameManager;
     }
     
     /**
@@ -343,8 +352,10 @@ contract EpochManager {
      */
     function recordFragmentCollection(address player, uint256 fragmentId) external {
         require(
-            msg.sender == memoryFragmentContract || msg.sender == ainpcExtendedContract,
-            "Unauthorized: only MemoryFragment or AINPC contracts"
+            msg.sender == memoryFragmentContract || 
+            msg.sender == ainpcExtendedContract || 
+            msg.sender == miniGameManagerContract,
+            "Unauthorized: only authorized contracts can record fragments"
         );
         
         // 如果玩家还没有这个碎片，则记录
