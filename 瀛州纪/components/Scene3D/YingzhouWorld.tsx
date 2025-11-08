@@ -76,30 +76,7 @@ export default function YingzhouWorld({
     dirLight.intensity = 0.8
     dirLight.diffuse = new BABYLON.Color3(0.8, 0.9, 1)
 
-    // 创建地面
-    const ground = BABYLON.MeshBuilder.CreateGround(
-      'ground',
-      { width: 100, height: 100, subdivisions: 4 },
-      scene
-    )
-    
-    // 地面材质（赛博朋克风格）
-    const groundMat = new BABYLON.StandardMaterial('groundMat', scene)
-    groundMat.diffuseColor = new BABYLON.Color3(0.05, 0.1, 0.15)
-    groundMat.specularColor = new BABYLON.Color3(0, 0.3, 0.5)
-    groundMat.emissiveColor = new BABYLON.Color3(0, 0.05, 0.1)
-    ground.material = groundMat
-    ground.checkCollisions = true
-    
-    // 添加物理
-    ground.physicsImpostor = new BABYLON.PhysicsImpostor(
-      ground,
-      BABYLON.PhysicsImpostor.BoxImpostor,
-      { mass: 0, restitution: 0.1 },
-      scene
-    )
-
-    // 创建网格地面效果
+    // 创建能量泡泡空间（取代地面）
     createGridFloor(scene, BABYLON)
 
     // 创建天空盒
@@ -204,81 +181,376 @@ function getNPCName(npcId: string): string {
   return names[npcId] || '未知实体'
 }
 
-// 创建网格地面
+// 创建巨型能量泡泡空间
 function createGridFloor(scene: any, BABYLON: any) {
-  const gridSize = 100
-  const gridSpacing = 5
-  const lines = []
-
-  for (let i = -gridSize / 2; i <= gridSize / 2; i += gridSpacing) {
-    // X方向线条
-    lines.push([
-      new BABYLON.Vector3(-gridSize / 2, 0.01, i),
-      new BABYLON.Vector3(gridSize / 2, 0.01, i),
-    ])
-    // Z方向线条
-    lines.push([
-      new BABYLON.Vector3(i, 0.01, -gridSize / 2),
-      new BABYLON.Vector3(i, 0.01, gridSize / 2),
-    ])
-  }
-
-  const gridLines = BABYLON.MeshBuilder.CreateLineSystem(
-    'gridLines',
-    { lines },
+  // 创建巨大的球形泡泡
+  const bubble = BABYLON.MeshBuilder.CreateSphere(
+    'energyBubble',
+    { diameter: 200, segments: 64, updatable: true },  // updatable: true 允许实时变形！
     scene
   )
-  gridLines.color = new BABYLON.Color3(0, 0.5, 0.7)
-  gridLines.alpha = 0.3
-}
 
-// 创建天空盒
-function createSkybox(scene: any, BABYLON: any) {
-  const skybox = BABYLON.MeshBuilder.CreateBox('skybox', { size: 1000 }, scene)
-  const skyboxMat = new BABYLON.StandardMaterial('skyboxMat', scene)
-  skyboxMat.backFaceCulling = false
-  skyboxMat.disableLighting = true
-  skyboxMat.diffuseColor = new BABYLON.Color3(0, 0, 0)
-  skyboxMat.emissiveColor = new BABYLON.Color3(0.02, 0.02, 0.1)
-  skybox.material = skyboxMat
-  skybox.infiniteDistance = true
-}
+  // 泡泡材质 - 明显的半透明彩虹泡泡
+  const bubbleMat = new BABYLON.StandardMaterial('bubbleMat', scene)
+  bubbleMat.alpha = 0.35  // 提高透明度让泡泡更明显
+  bubbleMat.backFaceCulling = false // 从内部也能看到
+  
+  // 鲜明的彩虹般折射效果
+  bubbleMat.diffuseColor = new BABYLON.Color3(0.3, 0.7, 1)
+  bubbleMat.specularColor = new BABYLON.Color3(1, 1, 1)
+  bubbleMat.emissiveColor = new BABYLON.Color3(0.15, 0.25, 0.4)  // 更强的发光
+  bubbleMat.specularPower = 64
+  bubbleMat.useSpecularOverAlpha = true  // 高光更明显
+  
+  bubble.material = bubbleMat
 
-// 创建世界账本中央结构
-function createWorldLedger(scene: any, BABYLON: any) {
-  // 中央柱子
-  const pillar = BABYLON.MeshBuilder.CreateCylinder(
-    'ledgerPillar',
-    { height: 10, diameter: 3 },
+  // 创建线框网格覆盖整个泡泡
+  const wireframeBubble = BABYLON.MeshBuilder.CreateSphere(
+    'wireframeBubble',
+    { diameter: 201, segments: 32, updatable: true },  // 稍微大一点，避免Z-fighting，也需要 updatable
     scene
   )
-  pillar.position.y = 5
+  const wireframeMat = new BABYLON.StandardMaterial('wireframeMat', scene)
+  wireframeMat.wireframe = true  // 线框模式
+  wireframeMat.emissiveColor = new BABYLON.Color3(0, 0.9, 1)
+  wireframeMat.alpha = 0.6
+  wireframeBubble.material = wireframeMat
 
-  const pillarMat = new BABYLON.StandardMaterial('pillarMat', scene)
-  pillarMat.diffuseColor = new BABYLON.Color3(0, 0.2, 0.3)
-  pillarMat.emissiveColor = new BABYLON.Color3(0, 0.3, 0.5)
-  pillarMat.specularColor = new BABYLON.Color3(0.5, 0.8, 1)
-  pillar.material = pillarMat
+  // 存储原始顶点位置用于变形（主泡泡）
+  const positions = bubble.getVerticesData(BABYLON.VertexBuffer.PositionKind)
+  const originalPositions = positions ? positions.slice() : []
 
-  // 旋转的能量环
-  for (let i = 0; i < 3; i++) {
-    const ring = BABYLON.MeshBuilder.CreateTorus(
-      `ring${i}`,
-      { diameter: 4 + i * 2, thickness: 0.1, tessellation: 64 },
+  // 存储线框泡泡的顶点
+  const wirePositions = wireframeBubble.getVerticesData(BABYLON.VertexBuffer.PositionKind)
+  const wireOriginalPositions = wirePositions ? wirePositions.slice() : []
+
+  // 泡泡变形动画 - 真正的不规则波浪变形
+  scene.registerBeforeRender(() => {
+    const time = Date.now() * 0.001
+    
+    // 变形主泡泡 - 使用球面坐标创建不规则波浪
+    if (positions && originalPositions.length > 0) {
+      for (let i = 0; i < originalPositions.length; i += 3) {
+        const x = originalPositions[i]
+        const y = originalPositions[i + 1]
+        const z = originalPositions[i + 2]
+        
+        // 转换为球面坐标
+        const radius = Math.sqrt(x * x + y * y + z * z)
+        const theta = Math.atan2(z, x)  // 水平角度
+        const phi = Math.acos(y / radius)  // 垂直角度
+        
+        // 创建多个不同频率的波浪，产生复杂的不规则形状
+        const wave1 = Math.sin(time + theta * 3) * Math.sin(phi * 2)
+        const wave2 = Math.cos(time * 1.3 + phi * 4) * Math.cos(theta * 2)
+        const wave3 = Math.sin(time * 0.7 + theta * 5 + phi * 3)
+        const wave4 = Math.cos(time * 1.8 + Math.sin(theta * 3) + Math.cos(phi * 4))
+        const wave5 = Math.sin(time * 2.2 + theta * 2 - phi * 2)
+        
+        // 叠加所有波浪，幅度40米（相对100米半径非常明显）
+        const deformation = (wave1 * 15 + wave2 * 12 + wave3 * 10 + wave4 * 8 + wave5 * 5)
+        
+        // 沿法线方向变形
+        const normX = x / radius
+        const normY = y / radius
+        const normZ = z / radius
+        
+        positions[i] = x + normX * deformation
+        positions[i + 1] = y + normY * deformation
+        positions[i + 2] = z + normZ * deformation
+      }
+      
+      bubble.updateVerticesData(BABYLON.VertexBuffer.PositionKind, positions)
+    }
+
+    // 同步变形线框泡泡
+    if (wirePositions && wireOriginalPositions.length > 0) {
+      for (let i = 0; i < wireOriginalPositions.length; i += 3) {
+        const x = wireOriginalPositions[i]
+        const y = wireOriginalPositions[i + 1]
+        const z = wireOriginalPositions[i + 2]
+        
+        const radius = Math.sqrt(x * x + y * y + z * z)
+        const theta = Math.atan2(z, x)
+        const phi = Math.acos(y / radius)
+        
+        const wave1 = Math.sin(time + theta * 3) * Math.sin(phi * 2)
+        const wave2 = Math.cos(time * 1.3 + phi * 4) * Math.cos(theta * 2)
+        const wave3 = Math.sin(time * 0.7 + theta * 5 + phi * 3)
+        const wave4 = Math.cos(time * 1.8 + Math.sin(theta * 3) + Math.cos(phi * 4))
+        const wave5 = Math.sin(time * 2.2 + theta * 2 - phi * 2)
+        
+        const deformation = (wave1 * 15 + wave2 * 12 + wave3 * 10 + wave4 * 8 + wave5 * 5)
+        
+        const normX = x / radius
+        const normY = y / radius
+        const normZ = z / radius
+        
+        wirePositions[i] = x + normX * deformation
+        wirePositions[i + 1] = y + normY * deformation
+        wirePositions[i + 2] = z + normZ * deformation
+      }
+      
+      wireframeBubble.updateVerticesData(BABYLON.VertexBuffer.PositionKind, wirePositions)
+    }
+    
+    // 移除闪烁 - 保持恒定的颜色和透明度
+    bubbleMat.emissiveColor = new BABYLON.Color3(0.15, 0.25, 0.4)
+    bubbleMat.alpha = 0.35
+  })
+
+  // 在泡泡内部添加漂浮的小泡泡
+  for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const elevation = (Math.random() - 0.5) * Math.PI
+    const radius = 40 + Math.random() * 50
+    
+    const x = Math.cos(angle) * Math.cos(elevation) * radius
+    const y = Math.sin(elevation) * radius
+    const z = Math.sin(angle) * Math.cos(elevation) * radius
+    
+    const smallBubble = BABYLON.MeshBuilder.CreateSphere(
+      `smallBubble_${i}`,
+      { diameter: 1 + Math.random() * 2, segments: 16 },
       scene
     )
-    ring.position.y = 3 + i * 2
+    smallBubble.position = new BABYLON.Vector3(x, y, z)
     
-    const ringMat = new BABYLON.StandardMaterial(`ringMat${i}`, scene)
-    ringMat.emissiveColor = new BABYLON.Color3(0, 0.5 + i * 0.2, 0.7 + i * 0.1)
-    ringMat.alpha = 0.7
-    ring.material = ringMat
-
-    // 动画
+    const smallBubbleMat = new BABYLON.StandardMaterial(`smallBubbleMat_${i}`, scene)
+    smallBubbleMat.alpha = 0.4 + Math.random() * 0.3  // 更明显
+    smallBubbleMat.emissiveColor = new BABYLON.Color3(
+      0.3 + Math.random() * 0.3,
+      0.6 + Math.random() * 0.3,
+      0.8 + Math.random() * 0.2
+    )
+    smallBubbleMat.specularColor = new BABYLON.Color3(1, 1, 1)
+    smallBubbleMat.specularPower = 32
+    smallBubble.material = smallBubbleMat
+    
+    // 小泡泡也添加边缘线
+    smallBubble.enableEdgesRendering()
+    smallBubble.edgesWidth = 1
+    smallBubble.edgesColor = new BABYLON.Color4(0.5, 1, 1, 0.5)
+    
+    // 小泡泡慢速漂浮
+    const phase = Math.random() * Math.PI * 2
+    const driftSpeed = 0.0002 + Math.random() * 0.0003
     scene.registerBeforeRender(() => {
-      ring.rotation.y += 0.01 * (i + 1)
+      const time = Date.now() * driftSpeed
+      const offset = Math.sin(time + phase) * 3
+      smallBubble.position.y = y + offset
+      
+      // 大小脉动
+      const scale = 0.8 + Math.sin(time * 2 + phase) * 0.3
+      smallBubble.scaling.setAll(scale)
     })
   }
+}
+
+// 创建深邃虚空背景
+function createSkybox(scene: any, BABYLON: any) {
+  // 设置场景的清除颜色为深邃的虚空
+  scene.clearColor = new BABYLON.Color4(0.01, 0.01, 0.05, 1)
+
+  // 在泡泡外部添加远处的星云效果（静态粒子）
+  const nebula = new BABYLON.ParticleSystem('nebula', 800, scene)
+  nebula.particleTexture = new BABYLON.Texture('', scene)
+  
+  nebula.emitter = new BABYLON.Vector3(0, 0, 0)
+  nebula.minEmitBox = new BABYLON.Vector3(-150, -150, -150)
+  nebula.maxEmitBox = new BABYLON.Vector3(150, 150, 150)
+
+  // 星云颜色 - 青蓝紫混合
+  nebula.color1 = new BABYLON.Color4(0.3, 0.6, 1, 0.3)
+  nebula.color2 = new BABYLON.Color4(0.5, 0.3, 0.8, 0.2)
+  nebula.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+
+  nebula.minSize = 2
+  nebula.maxSize = 6
+
+  nebula.minLifeTime = 999
+  nebula.maxLifeTime = 999
+
+  nebula.emitRate = 800
+
+  nebula.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  nebula.gravity = new BABYLON.Vector3(0, 0, 0)
+  nebula.direction1 = new BABYLON.Vector3(0, 0, 0)
+  nebula.direction2 = new BABYLON.Vector3(0, 0, 0)
+  nebula.minEmitPower = 0
+  nebula.maxEmitPower = 0
+  nebula.updateSpeed = 0.001
+
+  nebula.start()
+
+  // 添加缓慢漂移的星光点
+  const stars = new BABYLON.ParticleSystem('distantStars', 300, scene)
+  stars.particleTexture = new BABYLON.Texture('', scene)
+  
+  stars.emitter = new BABYLON.Vector3(0, 0, 0)
+  stars.minEmitBox = new BABYLON.Vector3(-180, -180, -180)
+  stars.maxEmitBox = new BABYLON.Vector3(180, 180, 180)
+
+  stars.color1 = new BABYLON.Color4(1, 1, 1, 0.8)
+  stars.color2 = new BABYLON.Color4(0.7, 0.8, 1, 0.6)
+  stars.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+
+  stars.minSize = 0.2
+  stars.maxSize = 0.5
+
+  stars.minLifeTime = 999
+  stars.maxLifeTime = 999
+
+  stars.emitRate = 300
+
+  stars.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  stars.gravity = new BABYLON.Vector3(0, 0, 0)
+  stars.direction1 = new BABYLON.Vector3(0, 0, 0)
+  stars.direction2 = new BABYLON.Vector3(0, 0, 0)
+  stars.minEmitPower = 0
+  stars.maxEmitPower = 0
+  stars.updateSpeed = 0.002
+
+  stars.start()
+}
+
+// 创建世界账本中央结构 - 纯能量核心
+function createWorldLedger(scene: any, BABYLON: any) {
+  // 中央巨大能量球
+  const core = BABYLON.MeshBuilder.CreateSphere(
+    'ledgerCore',
+    { diameter: 5, segments: 32 },
+    scene
+  )
+  core.position.y = 10
+
+  const coreMat = new BABYLON.StandardMaterial('coreMat', scene)
+  coreMat.emissiveColor = new BABYLON.Color3(0, 1, 1)
+  coreMat.alpha = 0.6
+  coreMat.specularPower = 128
+  core.material = coreMat
+
+  // 核心强烈脉动
+  scene.registerBeforeRender(() => {
+    const time = Date.now() * 0.001
+    const pulse = 1 + Math.sin(time * 2) * 0.25
+    core.scaling.setAll(pulse)
+    
+    // 颜色变化
+    const colorShift = 0.7 + Math.sin(time) * 0.3
+    coreMat.emissiveColor = new BABYLON.Color3(0, colorShift, 1)
+  })
+
+  // 多层光环（不是立方体，是纯光环）
+  for (let i = 0; i < 5; i++) {
+    const ring = BABYLON.MeshBuilder.CreateTorus(
+      `coreRing_${i}`,
+      { diameter: 8 + i * 3, thickness: 0.05, tessellation: 64 },
+      scene
+    )
+    ring.position.y = 10
+
+    const ringMat = new BABYLON.StandardMaterial(`coreRingMat_${i}`, scene)
+    ringMat.emissiveColor = new BABYLON.Color3(0, 0.6 + i * 0.08, 0.8 + i * 0.04)
+    ringMat.alpha = 0.5 - i * 0.05
+    ring.material = ringMat
+
+    // 每层环独立旋转
+    const speed = (i % 2 === 0 ? 0.3 : -0.4) * (1 + i * 0.1)
+    scene.registerBeforeRender(() => {
+      ring.rotation.y += speed * 0.01
+      ring.rotation.x = Math.sin(Date.now() * 0.0005 + i) * 0.3
+      ring.rotation.z = Math.cos(Date.now() * 0.0007 + i) * 0.2
+    })
+  }
+
+  // 能量光束（从核心射出）
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    const beam = BABYLON.MeshBuilder.CreateCylinder(
+      `beam_${i}`,
+      { height: 15, diameter: 0.1, tessellation: 16 },
+      scene
+    )
+    
+    const direction = new BABYLON.Vector3(
+      Math.cos(angle),
+      0,
+      Math.sin(angle)
+    )
+    beam.position = core.position.add(direction.scale(10))
+    beam.lookAt(core.position)
+
+    const beamMat = new BABYLON.StandardMaterial(`beamMat_${i}`, scene)
+    beamMat.emissiveColor = new BABYLON.Color3(0, 0.8, 1)
+    beamMat.alpha = 0.3
+    beam.material = beamMat
+
+    // 光束脉动
+    const phase = i * Math.PI * 0.25
+    scene.registerBeforeRender(() => {
+      const pulse = 0.2 + Math.sin(Date.now() * 0.002 + phase) * 0.1
+      beamMat.alpha = pulse
+    })
+  }
+
+  // 向上和向下的能量流
+  for (let direction of [-1, 1]) {
+    const stream = new BABYLON.ParticleSystem(`coreStream_${direction}`, 3000, scene)
+    stream.particleTexture = new BABYLON.Texture('', scene)
+    
+    stream.emitter = core
+    stream.minEmitBox = new BABYLON.Vector3(-2, 0, -2)
+    stream.maxEmitBox = new BABYLON.Vector3(2, 0, 2)
+
+    stream.color1 = new BABYLON.Color4(0, 1, 1, 1)
+    stream.color2 = new BABYLON.Color4(0, 0.6, 1, 0.8)
+    stream.colorDead = new BABYLON.Color4(0, 0, 0.3, 0)
+
+    stream.minSize = 0.15
+    stream.maxSize = 0.4
+    stream.minLifeTime = 3
+    stream.maxLifeTime = 5
+
+    stream.emitRate = 200
+
+    stream.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+    stream.gravity = new BABYLON.Vector3(0, direction * 3, 0)
+    stream.direction1 = new BABYLON.Vector3(-0.5, direction * 8, -0.5)
+    stream.direction2 = new BABYLON.Vector3(0.5, direction * 10, 0.5)
+    stream.minEmitPower = 3
+    stream.maxEmitPower = 5
+    stream.updateSpeed = 0.01
+
+    stream.start()
+  }
+
+  // 环绕核心的螺旋粒子
+  const spiral = new BABYLON.ParticleSystem('coreSpiral', 1000, scene)
+  spiral.particleTexture = new BABYLON.Texture('', scene)
+  spiral.emitter = core
+  spiral.createSphereEmitter(3)
+  
+  spiral.color1 = new BABYLON.Color4(0, 0.8, 1, 0.8)
+  spiral.color2 = new BABYLON.Color4(0.5, 1, 1, 0.6)
+  spiral.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+  
+  spiral.minSize = 0.1
+  spiral.maxSize = 0.3
+  spiral.minLifeTime = 4
+  spiral.maxLifeTime = 6
+  
+  spiral.emitRate = 100
+  spiral.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  spiral.gravity = new BABYLON.Vector3(0, 0, 0)
+  spiral.direction1 = new BABYLON.Vector3(-2, -1, -2)
+  spiral.direction2 = new BABYLON.Vector3(2, 1, 2)
+  spiral.minAngularSpeed = 0
+  spiral.maxAngularSpeed = Math.PI
+  spiral.minEmitPower = 1
+  spiral.maxEmitPower = 2
+  
+  spiral.start()
 }
 
 // 创建 NPC 实体（异步加载真实数据）
@@ -329,38 +601,139 @@ async function createNPCEntities(scene: any, BABYLON: any, onInteract: (npcId: s
   npcsList.forEach((npcData, index) => {
     const position = positions[index % positions.length]
     const color = npcTypeColors[npcData.type]
-    // NPC 身体
-    const npc = BABYLON.MeshBuilder.CreateBox(
-      `npc_${index}`,
-      { size: 1.5, height: 2 },
+    
+    // 创建 NPC 能量柱
+    const npcGroup = new BABYLON.TransformNode(`npcGroup_${index}`, scene)
+    npcGroup.position = position.clone()
+
+    // 中央发光球（更大，更明亮）
+    const core = BABYLON.MeshBuilder.CreateSphere(
+      `npcCore_${index}`,
+      { diameter: 2, segments: 32 },
       scene
     )
-    npc.position = position.clone()
+    core.parent = npcGroup
+    core.position.y = 3
 
-    const npcMat = new BABYLON.StandardMaterial(`npc_${index}_mat`, scene)
-    npcMat.diffuseColor = new BABYLON.Color3(...color)
-    npcMat.emissiveColor = new BABYLON.Color3(...color.map(c => c * 0.3) as [number, number, number])
-    npc.material = npcMat
+    const coreMat = new BABYLON.StandardMaterial(`npcCoreMat_${index}`, scene)
+    coreMat.emissiveColor = new BABYLON.Color3(...color)
+    coreMat.alpha = 0.7
+    core.material = coreMat
 
-    // 元数据（使用真实的 NPC ID）
-    npc.metadata = {
+    // 垂直能量柱（从地面到核心）
+    const beam = BABYLON.MeshBuilder.CreateCylinder(
+      `npcBeam_${index}`,
+      { height: 6, diameter: 0.5, tessellation: 32 },
+      scene
+    )
+    beam.parent = npcGroup
+    beam.position.y = 1.5
+
+    const beamMat = new BABYLON.StandardMaterial(`npcBeamMat_${index}`, scene)
+    beamMat.emissiveColor = new BABYLON.Color3(...color)
+    beamMat.alpha = 0.3
+    beam.material = beamMat
+
+    // 底部光圈
+    const baseRing = BABYLON.MeshBuilder.CreateTorus(
+      `npcBase_${index}`,
+      { diameter: 4, thickness: 0.08, tessellation: 64 },
+      scene
+    )
+    baseRing.parent = npcGroup
+    baseRing.rotation.x = Math.PI / 2
+
+    const baseRingMat = new BABYLON.StandardMaterial(`npcBaseMat_${index}`, scene)
+    baseRingMat.emissiveColor = new BABYLON.Color3(...color)
+    baseRingMat.alpha = 0.6
+    baseRing.material = baseRingMat
+
+    // 向上的粒子流
+    const upStream = new BABYLON.ParticleSystem(`npcUpStream_${index}`, 300, scene)
+    upStream.particleTexture = new BABYLON.Texture('', scene)
+    upStream.emitter = new BABYLON.Vector3(position.x, position.y, position.z)
+    upStream.createCylinderEmitter(1, 0, 0.5)
+    
+    upStream.color1 = new BABYLON.Color4(...color, 1)
+    upStream.color2 = new BABYLON.Color4(...color.map(c => c * 0.7) as [number, number, number], 0.8)
+    upStream.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+    
+    upStream.minSize = 0.1
+    upStream.maxSize = 0.3
+    upStream.minLifeTime = 2
+    upStream.maxLifeTime = 3
+    
+    upStream.emitRate = 80
+    upStream.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+    upStream.gravity = new BABYLON.Vector3(0, 5, 0)
+    upStream.direction1 = new BABYLON.Vector3(-0.1, 8, -0.1)
+    upStream.direction2 = new BABYLON.Vector3(0.1, 10, 0.1)
+    upStream.minEmitPower = 2
+    upStream.maxEmitPower = 3
+    upStream.start()
+
+    // 核心周围的光晕粒子
+    const halo = new BABYLON.ParticleSystem(`npcHalo_${index}`, 150, scene)
+    halo.particleTexture = new BABYLON.Texture('', scene)
+    halo.emitter = core
+    halo.createSphereEmitter(1.5)
+    
+    halo.color1 = new BABYLON.Color4(...color, 0.8)
+    halo.color2 = new BABYLON.Color4(...color.map(c => c * 0.5) as [number, number, number], 0.5)
+    halo.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+    
+    halo.minSize = 0.15
+    halo.maxSize = 0.4
+    halo.minLifeTime = 2
+    halo.maxLifeTime = 4
+    
+    halo.emitRate = 40
+    halo.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+    halo.gravity = new BABYLON.Vector3(0, 0, 0)
+    halo.direction1 = new BABYLON.Vector3(-1, -1, -1)
+    halo.direction2 = new BABYLON.Vector3(1, 1, 1)
+    halo.minEmitPower = 0.5
+    halo.maxEmitPower = 1
+    halo.start()
+
+    // 元数据
+    core.metadata = {
       isNPC: true,
-      npcId: npcData.id,  // 真实的合约 NPC ID (哈希值)
+      npcId: npcData.id,
       npcName: npcData.name,
       npcType: npcData.type
     }
 
-    // 悬浮动画
+    // 动画：脉动和光效变化
     const initialY = position.y
-    let time = Math.random() * Math.PI * 2
+    const phase = Math.random() * Math.PI * 2
     scene.registerBeforeRender(() => {
-      time += 0.02
-      npc.position.y = initialY + Math.sin(time) * 0.2
-      npc.rotation.y += 0.01
+      const time = Date.now() * 0.001
+      
+      // 整体轻微悬浮
+      npcGroup.position.y = initialY + Math.sin(time + phase) * 0.2
+      
+      // 核心脉动
+      const pulse = 1 + Math.sin(time * 2 + phase) * 0.2
+      core.scaling.setAll(pulse)
+      
+      // 能量柱闪烁
+      beamMat.alpha = 0.2 + Math.sin(time * 3 + phase) * 0.15
+      
+      // 底部光圈旋转
+      baseRing.rotation.z += 0.01
+      
+      // 光效颜色微调
+      const colorPulse = 0.8 + Math.sin(time + phase) * 0.2
+      coreMat.emissiveColor = new BABYLON.Color3(
+        color[0] * colorPulse,
+        color[1] * colorPulse,
+        color[2] * colorPulse
+      )
     })
 
     // 名称标签（使用动态文本纹理）
-    createNameTag(scene, BABYLON, npcData.name, npc.position.add(new BABYLON.Vector3(0, 2, 0)))
+    createNameTag(scene, BABYLON, npcData.name, position.add(new BABYLON.Vector3(0, 3, 0)))
   })
 }
 
@@ -382,41 +755,96 @@ function createNameTag(scene: any, BABYLON: any, text: string, position: any) {
 
 // 创建粒子效果
 function createParticleEffects(scene: any, BABYLON: any) {
-  const particleSystem = new BABYLON.ParticleSystem('particles', 2000, scene)
-  
-  // 粒子纹理（使用简单的点）
-  particleSystem.particleTexture = new BABYLON.Texture(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
-    scene
-  )
+  // 第一层：漂浮的数据碎片
+  const dataFragments = new BABYLON.ParticleSystem('dataFragments', 1000, scene)
+  dataFragments.particleTexture = new BABYLON.Texture('', scene)
 
-  particleSystem.emitter = new BABYLON.Vector3(0, 0, 0)
-  particleSystem.minEmitBox = new BABYLON.Vector3(-50, 0, -50)
-  particleSystem.maxEmitBox = new BABYLON.Vector3(50, 10, 50)
+  dataFragments.emitter = new BABYLON.Vector3(0, 15, 0)
+  dataFragments.minEmitBox = new BABYLON.Vector3(-80, -10, -80)
+  dataFragments.maxEmitBox = new BABYLON.Vector3(80, 10, 80)
 
-  particleSystem.color1 = new BABYLON.Color4(0, 0.5, 1, 1)
-  particleSystem.color2 = new BABYLON.Color4(0, 1, 1, 1)
-  particleSystem.colorDead = new BABYLON.Color4(0, 0, 0.2, 0)
+  dataFragments.color1 = new BABYLON.Color4(0, 1, 1, 0.8)
+  dataFragments.color2 = new BABYLON.Color4(0, 0.7, 1, 0.6)
+  dataFragments.colorDead = new BABYLON.Color4(0, 0, 0.3, 0)
 
-  particleSystem.minSize = 0.05
-  particleSystem.maxSize = 0.15
+  dataFragments.minSize = 0.1
+  dataFragments.maxSize = 0.4
 
-  particleSystem.minLifeTime = 3
-  particleSystem.maxLifeTime = 6
+  dataFragments.minLifeTime = 8
+  dataFragments.maxLifeTime = 15
 
-  particleSystem.emitRate = 50
+  dataFragments.emitRate = 80
 
-  particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  dataFragments.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  dataFragments.gravity = new BABYLON.Vector3(0, 0.2, 0)
+  dataFragments.direction1 = new BABYLON.Vector3(-0.5, -1, -0.5)
+  dataFragments.direction2 = new BABYLON.Vector3(0.5, 1, 0.5)
+  dataFragments.minAngularSpeed = 0
+  dataFragments.maxAngularSpeed = Math.PI
+  dataFragments.minEmitPower = 0.5
+  dataFragments.maxEmitPower = 1.5
+  dataFragments.updateSpeed = 0.01
 
-  particleSystem.gravity = new BABYLON.Vector3(0, -0.5, 0)
+  dataFragments.start()
 
-  particleSystem.direction1 = new BABYLON.Vector3(-1, 1, -1)
-  particleSystem.direction2 = new BABYLON.Vector3(1, 1, 1)
+  // 第二层：快速的数据流
+  const dataStream = new BABYLON.ParticleSystem('dataStream', 500, scene)
+  dataStream.particleTexture = new BABYLON.Texture('', scene)
 
-  particleSystem.minEmitPower = 0.5
-  particleSystem.maxEmitPower = 1
-  particleSystem.updateSpeed = 0.01
+  dataStream.emitter = new BABYLON.Vector3(0, 0, 0)
+  dataStream.minEmitBox = new BABYLON.Vector3(-50, 0, -50)
+  dataStream.maxEmitBox = new BABYLON.Vector3(50, 0, 50)
 
-  particleSystem.start()
+  dataStream.color1 = new BABYLON.Color4(0.5, 1, 1, 1)
+  dataStream.color2 = new BABYLON.Color4(0, 0.8, 1, 0.8)
+  dataStream.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+
+  dataStream.minSize = 0.05
+  dataStream.maxSize = 0.2
+
+  dataStream.minLifeTime = 2
+  dataStream.maxLifeTime = 4
+
+  dataStream.emitRate = 100
+
+  dataStream.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  dataStream.gravity = new BABYLON.Vector3(0, 3, 0)
+  dataStream.direction1 = new BABYLON.Vector3(-0.2, 5, -0.2)
+  dataStream.direction2 = new BABYLON.Vector3(0.2, 8, 0.2)
+  dataStream.minEmitPower = 2
+  dataStream.maxEmitPower = 4
+  dataStream.updateSpeed = 0.01
+
+  dataStream.start()
+
+  // 第三层：环境光点
+  const ambientGlow = new BABYLON.ParticleSystem('ambientGlow', 300, scene)
+  ambientGlow.particleTexture = new BABYLON.Texture('', scene)
+
+  ambientGlow.emitter = new BABYLON.Vector3(0, 5, 0)
+  ambientGlow.minEmitBox = new BABYLON.Vector3(-60, -5, -60)
+  ambientGlow.maxEmitBox = new BABYLON.Vector3(60, 5, 60)
+
+  ambientGlow.color1 = new BABYLON.Color4(0.3, 0.8, 1, 0.5)
+  ambientGlow.color2 = new BABYLON.Color4(0, 0.5, 0.8, 0.3)
+  ambientGlow.colorDead = new BABYLON.Color4(0, 0, 0, 0)
+
+  ambientGlow.minSize = 0.3
+  ambientGlow.maxSize = 0.8
+
+  ambientGlow.minLifeTime = 10
+  ambientGlow.maxLifeTime = 20
+
+  ambientGlow.emitRate = 30
+
+  ambientGlow.blendMode = BABYLON.ParticleSystem.BLENDMODE_ADD
+  ambientGlow.gravity = new BABYLON.Vector3(0, 0, 0)
+  ambientGlow.direction1 = new BABYLON.Vector3(-0.1, -0.1, -0.1)
+  ambientGlow.direction2 = new BABYLON.Vector3(0.1, 0.1, 0.1)
+  ambientGlow.minEmitPower = 0.1
+  ambientGlow.maxEmitPower = 0.3
+  ambientGlow.updateSpeed = 0.005
+
+  ambientGlow.start()
 }
 
