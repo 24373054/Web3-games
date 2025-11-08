@@ -260,8 +260,8 @@ export default function DebugPage() {
               <div className="p-3 bg-red-900 bg-opacity-30 rounded">
                 <p className="text-red-400 font-bold mb-1">❌ 部分合约未部署</p>
                 <p className="text-gray-300">请运行：<code className="text-yingzhou-cyan">npm run deploy:auto</code></p>
-              </div>
-            )}
+          </div>
+        )}
 
             {checks.rpc?.status?.includes('✅') && 
              checks.metamask?.status?.includes('✅') && 

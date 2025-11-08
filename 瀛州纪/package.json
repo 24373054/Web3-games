@@ -12,6 +12,7 @@
     "deploy": "hardhat run scripts/deploy.js",
     "deploy:auto": "hardhat run scripts/deploy-and-setup.js --network localhost",
     "check": "node scripts/check-env.js",
+    "check:contracts": "hardhat run scripts/check-registration.js --network localhost",
     "airdrop": "hardhat run scripts/airdrop.js --network localhost"
   },
   "dependencies": {
@@ -23,7 +24,10 @@
     "viem": "^2.0.0",
     "@rainbow-me/rainbowkit": "^2.0.0",
     "axios": "^1.6.0",
-    "framer-motion": "^10.16.0"
+    "framer-motion": "^10.16.0",
+    "@babylonjs/core": "^7.0.0",
+    "@babylonjs/loaders": "^7.0.0",
+    "cannon-es": "^0.20.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",

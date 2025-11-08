@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { ethers } from 'ethers'
 import Link from 'next/link'
 import WorldStatus from '@/components/WorldStatus'
@@ -9,12 +9,22 @@ import NPCList from '@/components/NPCList'
 import DialogueInterface from '@/components/DialogueInterface'
 import EventTimeline from '@/components/EventTimeline'
 
+// 动态导入3D组件（仅客户端）
+const YingzhouWorld = lazy(() => import('@/components/Scene3D/YingzhouWorld'))
+const SimpleWorld = lazy(() => import('@/components/Scene3D/SimpleWorld'))
+
+type ViewMode = '3d' | '2d'
+type SceneMode = 'full' | 'simple'
+
 export default function Home() {
   const [account, setAccount] = useState<string | null>(null)
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null)
   const [beingId, setBeingId] = useState<number | null>(null)
   const [selectedNPC, setSelectedNPC] = useState<string | null>(null)
   const [networkStatus, setNetworkStatus] = useState<{chainId: string, correct: boolean} | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('3d')
+  const [sceneMode, setSceneMode] = useState<SceneMode>('simple')
+  const [show3DDialog, setShow3DDialog] = useState(false)
 
   useEffect(() => {
     checkConnection()
@@ -26,6 +36,17 @@ export default function Home() {
       })
     }
   }, [])
+
+  // 当创建数字生命后，自动切换到3D视图
+  useEffect(() => {
+    if (beingId !== null && viewMode === '2d') {
+      // 给用户一点时间看到成功消息，然后切换
+      const timer = setTimeout(() => {
+        setViewMode('3d')
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [beingId])
 
   const checkConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -193,31 +214,172 @@ function remember() external {
         </div>
       ) : (
         // 主游戏界面
-        <div className="container mx-auto px-6 py-8">
-          {/* 网络警告 */}
-          {networkStatus && !networkStatus.correct && (
-            <div className="mb-6 p-4 bg-red-900 bg-opacity-30 border-2 border-red-500 rounded-lg">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl">⚠️</span>
-                <div className="flex-1">
-                  <h3 className="text-red-400 font-bold mb-2">网络配置错误！</h3>
-                  <p className="text-sm text-gray-300 mb-2">
-                    MetaMask 连接到了错误的网络 (Chain ID: {networkStatus.chainId})
-                  </p>
-                  <p className="text-sm text-gray-300 mb-3">
-                    请切换到 Hardhat Local 网络 (Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'})
-                  </p>
-                  <div className="text-xs bg-black bg-opacity-50 p-3 rounded">
-                    <p className="text-gray-400 mb-1">正确配置：</p>
-                    <p className="text-yingzhou-cyan">RPC URL: {process.env.NEXT_PUBLIC_RPC_URL}</p>
-                    <p className="text-yingzhou-cyan">Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'}</p>
+        <div className="relative">
+          {/* 视图切换按钮 - 连接钱包后就显示 */}
+          <div className="absolute top-4 left-4 z-50 flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('3d')}
+                  className={`px-4 py-2 border-2 transition-all ${
+                    viewMode === '3d'
+                      ? 'bg-yingzhou-cyan text-black border-yingzhou-cyan'
+                      : 'bg-black/70 text-yingzhou-cyan border-yingzhou-cyan hover:bg-yingzhou-cyan/20'
+                  }`}
+                >
+                  🌐 3D世界
+                </button>
+                <button
+                  onClick={() => setViewMode('2d')}
+                  className={`px-4 py-2 border-2 transition-all ${
+                    viewMode === '2d'
+                      ? 'bg-yingzhou-cyan text-black border-yingzhou-cyan'
+                      : 'bg-black/70 text-yingzhou-cyan border-yingzhou-cyan hover:bg-yingzhou-cyan/20'
+                  }`}
+                >
+                  📋 管理面板
+                </button>
+              </div>
+              
+              {viewMode === '3d' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSceneMode('simple')}
+                    className={`px-3 py-1 text-xs border transition-all ${
+                      sceneMode === 'simple'
+                        ? 'bg-green-500 text-black border-green-500'
+                        : 'bg-black/70 text-green-400 border-green-400 hover:bg-green-500/20'
+                    }`}
+                  >
+                    ✅ 简化版
+                  </button>
+                  <button
+                    onClick={() => setSceneMode('full')}
+                    className={`px-3 py-1 text-xs border transition-all ${
+                      sceneMode === 'full'
+                        ? 'bg-blue-500 text-black border-blue-500'
+                        : 'bg-black/70 text-blue-400 border-blue-400 hover:bg-blue-500/20'
+                    }`}
+                  >
+                    🚀 完整版
+                  </button>
+                </div>
+              )}
+            </div>
+
+          {/* 3D视图 */}
+          {viewMode === '3d' && (
+            <div className="h-screen w-full">
+              {beingId === null ? (
+                // 未创建数字生命时的提示界面
+                <div className="h-screen w-full flex items-center justify-center bg-gradient-to-b from-black via-yingzhou-dark to-black">
+                  <div className="max-w-2xl mx-auto text-center p-8">
+                    <div className="text-6xl mb-6 animate-pulse">🌌</div>
+                    <h2 className="text-4xl font-bold text-yingzhou-cyan mb-6 glow-text">
+                      瀛州3D世界
+                    </h2>
+                    <div className="digital-frame mb-8 text-left">
+                      <p className="text-lg text-gray-300 mb-4">
+                        在进入3D世界之前，你需要先创建你的数字生命...
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        点击右侧的 <span className="text-yingzhou-cyan">📋 管理面板</span> 创建你的 Digital Being NFT
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewMode('2d')}
+                      className="btn-primary text-xl px-8 py-4"
+                    >
+                      前往创建数字生命 →
+                    </button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // 已创建数字生命，显示3D场景
+                <Suspense fallback={
+                  <div className="h-screen w-full flex items-center justify-center bg-black">
+                    <div className="text-center">
+                      <div className="text-4xl text-yingzhou-cyan mb-4 animate-pulse">⚡</div>
+                      <div className="text-yingzhou-cyan">加载3D世界...</div>
+                    </div>
+                  </div>
+                }>
+                  {sceneMode === 'simple' ? (
+                  <SimpleWorld
+                    provider={provider}
+                    account={account}
+                    beingId={beingId}
+                    onNPCInteract={(npcId) => {
+                      setSelectedNPC(npcId)
+                      setShow3DDialog(true)
+                    }}
+                    onToggleUI={() => setViewMode('2d')}
+                  />
+                ) : (
+                  <YingzhouWorld
+                    provider={provider}
+                    account={account}
+                    beingId={beingId}
+                    onNPCInteract={(npcId) => {
+                      setSelectedNPC(npcId)
+                      setShow3DDialog(true)
+                    }}
+                    onToggleUI={() => setViewMode('2d')}
+                  />
+                )}
+                </Suspense>
+              )}
+
+              {/* 3D场景中的对话框 */}
+              {beingId !== null && show3DDialog && selectedNPC && (
+                <div className="absolute bottom-0 left-0 right-0 p-4 z-50">
+                  <div className="max-w-4xl mx-auto bg-black/95 border-2 border-yingzhou-cyan p-6 rounded-lg">
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl text-yingzhou-cyan">与 {selectedNPC} 对话</h3>
+                      <button
+                        onClick={() => setShow3DDialog(false)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <DialogueInterface
+                      provider={provider}
+                      beingId={beingId}
+                      npcId={selectedNPC}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* 2D视图（原有UI） */}
+          {viewMode === '2d' && (
+            <div className="container mx-auto px-6 py-8">
+              {/* 网络警告 */}
+              {networkStatus && !networkStatus.correct && (
+                <div className="mb-6 p-4 bg-red-900 bg-opacity-30 border-2 border-red-500 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div className="flex-1">
+                      <h3 className="text-red-400 font-bold mb-2">网络配置错误！</h3>
+                      <p className="text-sm text-gray-300 mb-2">
+                        MetaMask 连接到了错误的网络 (Chain ID: {networkStatus.chainId})
+                      </p>
+                      <p className="text-sm text-gray-300 mb-3">
+                        请切换到 Hardhat Local 网络 (Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'})
+                      </p>
+                      <div className="text-xs bg-black bg-opacity-50 p-3 rounded">
+                        <p className="text-gray-400 mb-1">正确配置：</p>
+                        <p className="text-yingzhou-cyan">RPC URL: {process.env.NEXT_PUBLIC_RPC_URL}</p>
+                        <p className="text-yingzhou-cyan">Chain ID: {process.env.NEXT_PUBLIC_CHAIN_ID || '31337'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 左侧：世界状态和玩家信息 */}
             <div className="space-y-6">
               <WorldStatus provider={provider} />
@@ -261,6 +423,8 @@ function remember() external {
               )}
             </div>
           </div>
+        </div>
+          )}
         </div>
       )}
 

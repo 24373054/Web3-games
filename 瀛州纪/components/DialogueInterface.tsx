@@ -43,12 +43,29 @@ export default function DialogueInterface({ provider, beingId, npcId }: Dialogue
     scrollToBottom()
   }, [messages])
 
+  // 将 NPC ID 字符串转换为 bytes32
+  const npcIdToBytes32 = (id: string): string => {
+    try {
+      // 如果已经是 bytes32 格式（0x开头，66字符），直接返回
+      if (id.startsWith('0x') && id.length === 66) {
+        return id
+      }
+      // 否则转换字符串为 bytes32
+      return ethers.encodeBytes32String(id)
+    } catch (error) {
+      console.error('NPC ID 转换失败:', error)
+      // 如果转换失败，尝试直接使用
+      return id
+    }
+  }
+
   const loadNPCInfo = async () => {
     if (!provider) return
 
     try {
       const contract = getAINPCContract(provider)
-      const npc = await contract.getNPC(npcId)
+      const npcIdBytes = npcIdToBytes32(npcId)
+      const npc = await contract.getNPC(npcIdBytes)
       setNpcInfo({
         type: Number(npc.npcType),
         name: npc.name,
@@ -69,7 +86,8 @@ export default function DialogueInterface({ provider, beingId, npcId }: Dialogue
       setLoadingHistory(true)
       const rpc = getRpcProvider()
       const contract = getAINPCContract(rpc)
-      const history = await contract.getDialogueHistory(npcId)
+      const npcIdBytes = npcIdToBytes32(npcId)
+      const history = await contract.getDialogueHistory(npcIdBytes)
       // 将链上历史转换为前端消息
       const msgs: Message[] = []
       const seenReqIds = new Set<string>()
@@ -124,9 +142,18 @@ export default function DialogueInterface({ provider, beingId, npcId }: Dialogue
       const npcType = npcInfo?.type || 0
       const entropy = npcInfo?.degradationLevel || 0
 
+      console.log('📤 DialogueInterface - 准备发送消息:')
+      console.log('  原始 NPC ID:', npcId)
+      console.log('  NPC ID 类型:', typeof npcId)
+      console.log('  NPC ID 长度:', npcId?.length)
+      
+      const npcIdBytes = npcIdToBytes32(npcId)
+      console.log('  转换后 bytes32:', npcIdBytes)
+      
       const questionHash = ethers.keccak256(ethers.toUtf8Bytes(userMessage))
       // 编码 AINPC.interact 调用数据
-      const callData = ainpcIface.encodeFunctionData('interact', [npcId, questionHash])
+      const callData = ainpcIface.encodeFunctionData('interact', [npcIdBytes, questionHash])
+      console.log('  callData:', callData)
       const tx = await digitalBeing.interact(beingId, ainpcAddress, callData)
       const receipt = await tx.wait()
       // 解析 requestId（从 AINPC 的 DialogueRecorded 事件）
@@ -161,7 +188,7 @@ export default function DialogueInterface({ provider, beingId, npcId }: Dialogue
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              npcId,
+              npcId: npcIdBytes,
               requestId,
               questionHash,
               questionText: userMessage,
