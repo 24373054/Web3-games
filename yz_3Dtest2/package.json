@@ -1,0 +1,10 @@
+{
+  "name": "babylon-3d-game",
+  "version": "1.0.0",
+  "description": "3D Game with Babylon.js",
+  "main": "index.js",
+  "scripts": {
+    "dev": "python -m http.server 5173",
+    "start": "python -m http.server 5173"
+  }
+}
