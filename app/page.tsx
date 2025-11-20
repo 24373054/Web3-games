@@ -7,6 +7,7 @@ import DigitalBeingCard from '@/components/DigitalBeingCard'
 import Explore3DWorld from '@/components/Explore3DWorld'
 import MetaMaskResetAlert from '@/components/MetaMaskResetAlert'
 import { ERAS, AI_NPCS, MEMORY_FRAGMENTS, getEraById, getNPCsByEra, getFragmentsByEra } from '@/lib/gameData'
+import { api, type EraConfig, type AINPC as APINpc, type MemoryFragment as APIFragment } from '@/lib/api'
 
 export default function Home() {
   // ===== Web3 State =====
@@ -21,7 +22,7 @@ export default function Home() {
   const [completedMinigames, setCompletedMinigames] = useState<string[]>([]) // 已完成的小游戏
   const [dialogueHistory, setDialogueHistory] = useState<{[npcId: string]: number}>({}) // NPC对话次数
   
-  // Load progress from localStorage
+  // Load progress from localStorage and sync with backend
   useEffect(() => {
     checkConnection()
     const savedProgress = localStorage.getItem('yingzhou_progress')
@@ -37,6 +38,27 @@ export default function Home() {
       }
     }
   }, [])
+
+  // Sync with backend when account is connected
+  useEffect(() => {
+    if (account) {
+      syncWithBackend()
+    }
+  }, [account])
+
+  const syncWithBackend = async () => {
+    if (!account) return
+    try {
+      const state = await api.getGameState(account)
+      setCurrentEra(state.currentEra)
+      setCollectedFragments(state.collectedFragmentIds)
+      setCompletedMinigames(Array.from(state.completedMinigames))
+      setDialogueHistory(state.dialogueHistory)
+    } catch (error) {
+      console.error('Failed to sync with backend:', error)
+      // 如果后端同步失败，继续使用本地数据
+    }
+  }
 
   // Save progress
   useEffect(() => {
@@ -106,9 +128,21 @@ export default function Home() {
     }
   }
 
-  const handleEraAdvance = () => {
-    if (currentEra < 4) {
-      setCurrentEra(currentEra + 1)
+  const handleEraAdvance = async () => {
+    if (!account || currentEra >= 4) return
+    
+    try {
+      // 调用后端API推进纪元
+      const result = await api.advanceEra(account)
+      if (result.success) {
+        setCurrentEra(result.currentEra)
+      }
+    } catch (error) {
+      console.error('Failed to advance era:', error)
+      // 后端调用失败时，仍然在前端推进（兼容模式）
+      if (currentEra < 4) {
+        setCurrentEra(currentEra + 1)
+      }
     }
   }
 

@@ -1,0 +1,19 @@
+pluginManagement {
+  repositories {
+    // 优先使用国内镜像的插件仓库
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+    gradlePluginPortal()
+    mavenCentral()
+  }
+}
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+  repositories {
+    // 依赖解析镜像
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    mavenCentral()
+  }
+}
+
+rootProject.name = 'yingzhou-java-game'
