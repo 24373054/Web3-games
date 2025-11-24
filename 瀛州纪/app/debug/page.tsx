@@ -5,6 +5,13 @@ import { ethers } from 'ethers'
 import { getContractAddresses } from '@/lib/contracts'
 import { getRpcProvider } from '@/lib/provider'
 
+// 扩展 Window 接口以包含 ethereum
+declare global {
+  interface Window {
+    ethereum?: any
+  }
+}
+
 export default function DebugPage() {
   const [checks, setChecks] = useState<any>({})
   const [loading, setLoading] = useState(true)

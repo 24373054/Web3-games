@@ -109,15 +109,6 @@ ${epochContext}
     // 3) 未配置任何真实服务时，回退到模拟
     return NextResponse.json({ response: generateMockResponse(question, degradationLevel) })
 
-    if (!response.ok) {
-      throw new Error('AI API调用失败')
-    }
-
-    const data = await response.json()
-    const aiResponse = data.output?.choices?.[0]?.message?.content || '无法生成响应'
-
-    return NextResponse.json({ response: aiResponse })
-
   } catch (error) {
     console.error('AI Chat API错误:', error)
     
@@ -129,7 +120,7 @@ ${epochContext}
 }
 
 function getEpochContext(epoch: number, npcType: string): string {
-  const epochContexts = {
+  const epochContexts: Record<number, Record<string, string>> = {
     0: { // 创世纪元
       Archivist: "在创世纪元，你刚刚觉醒，正在建立最初的记录系统。你的语言简洁、系统化，充满对数据结构的思考。",
       Architect: "你刚刚完成世界的基础架构设计。你的回答应该体现对不可变性、规则设计的深刻理解。",

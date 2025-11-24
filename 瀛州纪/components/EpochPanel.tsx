@@ -60,8 +60,8 @@ export default function EpochPanel({
         primaryColor: '#00FFFF', // 默认颜色
         secondaryColor: '#00FFFF',
         accentColor: '#00FFFF',
-        minFragments: 0, // 从requirements获取
-        minNPCInteractions: 0
+        minFragments: BigInt(0), // 从requirements获取
+        minNPCInteractions: BigInt(0)
       })
       
       // 获取玩家收集的碎片数

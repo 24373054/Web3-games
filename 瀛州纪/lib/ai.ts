@@ -4,7 +4,7 @@
  */
 
 // NPC类型对应的系统提示
-const npcSystemPrompts = {
+const npcSystemPrompts: Record<number, string> = {
   0: `你是瀛州文明的史官（Archivist），负责记录和保存历史。你的回答应该：
 - 以客观、详实的方式描述历史事件
 - 引用具体的区块号、交易哈希等技术细节

@@ -79,9 +79,31 @@ export default function Home() {
   }
 
   const connectWallet = async () => {
+    // 检测是否为移动端
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
     if (!window.ethereum) {
-      alert('请安装 MetaMask!')
-      return
+      if (isMobile) {
+        // 移动端：使用 deep link 唤起 MetaMask 或跳转下载
+        const currentUrl = window.location.href
+        const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`
+        
+        // 尝试唤起 MetaMask 应用
+        window.location.href = metamaskDeepLink
+        
+        // 如果 2 秒后还在页面，说明没有安装，跳转到下载页
+        setTimeout(() => {
+          if (confirm('检测到您尚未安装 MetaMask，是否前往下载？')) {
+            window.location.href = 'https://metamask.io/download/'
+          }
+        }, 2000)
+        return
+      } else {
+        // 桌面端：提示安装浏览器插件
+        alert('请安装 MetaMask 浏览器插件!\n\n访问: https://metamask.io/download/')
+        window.open('https://metamask.io/download/', '_blank')
+        return
+      }
     }
 
     try {
@@ -90,17 +112,13 @@ export default function Home() {
       // 先检查网络
       const network = await provider.getNetwork()
       const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID || '31337'
+      // 移动端使用 HTTPS RPC URL
+      const rpcUrl = isMobile 
+        ? (process.env.NEXT_PUBLIC_RPC_URL_HTTPS || 'https://immortal.matrixlab.work/rpc')
+        : (process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545')
       
       if (network.chainId.toString() !== expectedChainId) {
-        alert(
-          `⚠️ 网络不匹配！\n\n` +
-          `当前网络 Chain ID: ${network.chainId}\n` +
-          `需要 Chain ID: ${expectedChainId}\n\n` +
-          `请在 MetaMask 中切换到 Hardhat Local 网络：\n` +
-          `- RPC URL: ${process.env.NEXT_PUBLIC_RPC_URL}\n` +
-          `- Chain ID: ${expectedChainId}\n\n` +
-          `或者点击 MetaMask 中的"添加网络"`
-        )
+        console.log('网络不匹配，尝试切换或添加网络...')
         
         // 尝试切换网络
         try {
@@ -108,20 +126,46 @@ export default function Home() {
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: `0x${parseInt(expectedChainId).toString(16)}` }],
           })
+          console.log('✅ 网络切换成功')
         } catch (switchError: any) {
-          // 如果网络不存在，提示用户添加
+          // 如果网络不存在 (code 4902)，自动添加网络
           if (switchError.code === 4902) {
-            alert(
-              '请手动添加 Hardhat Local 网络：\n\n' +
-              '1. 打开 MetaMask\n' +
-              '2. 网络下拉菜单 → 添加网络\n' +
-              `3. RPC URL: ${process.env.NEXT_PUBLIC_RPC_URL}\n` +
-              `4. Chain ID: ${expectedChainId}\n` +
-              '5. 货币符号: ETH'
-            )
+            try {
+              console.log('网络不存在，尝试添加...')
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: `0x${parseInt(expectedChainId).toString(16)}`,
+                  chainName: '瀛州纪本地网络',
+                  nativeCurrency: {
+                    name: 'Ether',
+                    symbol: 'ETH',
+                    decimals: 18
+                  },
+                  rpcUrls: [rpcUrl],
+                  blockExplorerUrls: null
+                }],
+              })
+              console.log('✅ 网络添加成功')
+            } catch (addError: any) {
+              console.error('添加网络失败:', addError)
+              alert(
+                `⚠️ 无法自动添加网络\n\n` +
+                `错误: ${addError.message}\n\n` +
+                `请手动添加网络：\n` +
+                `- 网络名称: 瀛州纪本地网络\n` +
+                `- RPC URL: ${rpcUrl}\n` +
+                `- Chain ID: ${expectedChainId}\n` +
+                `- 货币符号: ETH`
+              )
+              return
+            }
+          } else {
+            console.error('切换网络失败:', switchError)
+            alert(`切换网络失败: ${switchError.message}`)
+            return
           }
         }
-        return
       }
       
       await provider.send("eth_requestAccounts", [])

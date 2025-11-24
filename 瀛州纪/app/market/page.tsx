@@ -56,13 +56,74 @@ export default function MarketPage() {
   }
 
   const connectWallet = async () => {
+    // 检测是否为移动端
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
     if (!window.ethereum) {
-      alert('请安装 MetaMask!')
-      return
+      if (isMobile) {
+        // 移动端：使用 deep link 唤起 MetaMask 或跳转下载
+        const metamaskDeepLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`
+        
+        // 尝试唤起 MetaMask 应用
+        window.location.href = metamaskDeepLink
+        
+        // 如果 2 秒后还在页面，说明没有安装，跳转到下载页
+        setTimeout(() => {
+          if (confirm('检测到您尚未安装 MetaMask，是否前往下载？')) {
+            window.location.href = 'https://metamask.io/download/'
+          }
+        }, 2000)
+        return
+      } else {
+        // 桌面端：提示安装浏览器插件
+        alert('请安装 MetaMask 浏览器插件!\n\n访问: https://metamask.io/download/')
+        window.open('https://metamask.io/download/', '_blank')
+        return
+      }
     }
 
     try {
       const prov = new ethers.BrowserProvider(window.ethereum)
+      
+      // 检查网络并自动添加
+      const network = await prov.getNetwork()
+      const expectedChainId = process.env.NEXT_PUBLIC_CHAIN_ID || '31337'
+      // 移动端使用 HTTPS RPC URL
+      const rpcUrl = isMobile 
+        ? (process.env.NEXT_PUBLIC_RPC_URL_HTTPS || 'https://immortal.matrixlab.work/rpc')
+        : (process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545')
+      
+      if (network.chainId.toString() !== expectedChainId) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: `0x${parseInt(expectedChainId).toString(16)}` }],
+          })
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: `0x${parseInt(expectedChainId).toString(16)}`,
+                  chainName: '瀛州纪本地网络',
+                  nativeCurrency: {
+                    name: 'Ether',
+                    symbol: 'ETH',
+                    decimals: 18
+                  },
+                  rpcUrls: [rpcUrl],
+                  blockExplorerUrls: null
+                }],
+              })
+            } catch (addError: any) {
+              alert(`无法添加网络: ${addError.message}`)
+              return
+            }
+          }
+        }
+      }
+      
       await prov.send("eth_requestAccounts", [])
       const signer = await prov.getSigner()
       const addr = await signer.getAddress()

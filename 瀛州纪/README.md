@@ -115,13 +115,49 @@ npm run deploy
 
 部署成功后，将输出的合约地址填入 `.env.local` 文件。
 
-### 启动前端
+### 启动 Hardhat 本地节点
 
 ```bash
-npm run dev
+# 启动本地区块链节点
+./start-hardhat.sh
+
+# 停止节点
+./stop-hardhat.sh
 ```
 
-访问 [http://localhost:3000](http://localhost:3000)
+节点信息:
+- RPC URL: http://127.0.0.1:8545
+- Chain ID: 31337
+- 每个测试账户预充值: 10000 ETH
+
+### 配置 MetaMask
+
+请参考 [METAMASK-SETUP.md](./METAMASK-SETUP.md) 配置 MetaMask 连接到本地网络。
+
+### 启动前端
+
+**开发模式:**
+```bash
+npm run dev
+# 或使用启动脚本
+./start.sh
+```
+
+**生产模式 (后台运行):**
+```bash
+# 启动应用
+./start-prod-daemon.sh
+
+# 停止应用
+./stop.sh
+
+# 查看日志
+tail -f logs/app.log
+```
+
+访问地址:
+- 🌐 线上: [https://immortal.matrixlab.work](https://immortal.matrixlab.work)
+- 🔧 本地: [http://localhost:3106](http://localhost:3106)
 
 ## 🎮 游戏玩法
 

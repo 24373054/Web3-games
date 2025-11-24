@@ -15,6 +15,10 @@ module.exports = {
     hardhat: {
       chainId: 31337
     },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      chainId: 31337
+    },
     // 可以添加测试网络配置
     // sepolia: {
     //   url: process.env.SEPOLIA_RPC_URL,
