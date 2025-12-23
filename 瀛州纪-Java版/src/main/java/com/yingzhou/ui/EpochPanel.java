@@ -185,9 +185,9 @@ public class EpochPanel {
         overallProgress.setPrefHeight(8);
         int currentIndex = gameEngine.getEpochManager().getCurrentEpoch().ordinal();
         overallProgress.setProgress(currentIndex / 4.0);
-        overallProgress.setStyle(
-            "-fx-accent: linear-gradient(to right, #06b6d4, #10b981, #eab308, #ef4444, #ffffff);"
-        );
+        // 根据当前纪元设置颜色
+        String[] epochColors = {"#06b6d4", "#10b981", "#eab308", "#ef4444", "#ffffff"};
+        overallProgress.setStyle("-fx-accent: " + epochColors[currentIndex] + ";");
         
         // 纪元节点
         timelineBox = new HBox(0);
@@ -339,9 +339,7 @@ public class EpochPanel {
         epochProgress.setPrefWidth(Double.MAX_VALUE);
         epochProgress.setProgress(Math.min(1.0, (double)collected / required));
         epochProgress.setStyle(
-            "-fx-accent: " + (collected >= required ? 
-                "linear-gradient(to right, #10b981, #22c55e)" : 
-                "linear-gradient(to right, #eab308, #f97316)") + ";"
+            "-fx-accent: " + (collected >= required ? "#10b981" : "#eab308") + ";"
         );
         
         if (collected < required) {

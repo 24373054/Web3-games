@@ -141,7 +141,7 @@ public class FragmentGallery {
         
         mainProgress = new ProgressBar(0);
         mainProgress.setPrefWidth(400);
-        mainProgress.setStyle("-fx-accent: linear-gradient(to right, #3b82f6, #06b6d4);");
+        mainProgress.setStyle("-fx-accent: #06b6d4;");
         
         mainProgressBox.getChildren().addAll(mainProgressLabel, mainProgress);
         
@@ -153,7 +153,7 @@ public class FragmentGallery {
         
         hiddenProgress = new ProgressBar(0);
         hiddenProgress.setPrefWidth(400);
-        hiddenProgress.setStyle("-fx-accent: linear-gradient(to right, #eab308, #f97316);");
+        hiddenProgress.setStyle("-fx-accent: #eab308;");
         
         hiddenProgressBox.getChildren().addAll(hiddenProgressLabel, hiddenProgress);
         
