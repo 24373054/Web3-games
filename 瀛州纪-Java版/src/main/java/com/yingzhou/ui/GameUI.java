@@ -1,9 +1,11 @@
 package com.yingzhou.ui;
 
 import com.yingzhou.game.GameEngine;
+import com.yingzhou.npc.BaseNPC;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -19,7 +21,11 @@ public class GameUI {
     private HBox topBar;
     private HBox bottomBar;
     private VBox rightPanel;
+    private VBox leftPanel;
     private boolean menuVisible;
+    private DialoguePanel dialoguePanel;
+    private FragmentGallery fragmentGallery;
+    private EpochPanel epochPanel;
 
     public GameUI(GameEngine gameEngine) {
         this.gameEngine = gameEngine;
@@ -31,6 +37,10 @@ public class GameUI {
         createTopBar();
         createBottomBar();
         createRightPanel();
+        createLeftPanel();
+        createDialoguePanel();
+        createFragmentGallery();
+        createEpochPanel();
     }
 
     private void createTopBar() {
@@ -106,28 +116,230 @@ public class GameUI {
     }
 
     private void createRightPanel() {
-        rightPanel = new VBox(10);
-        rightPanel.setPadding(new Insets(10));
-        rightPanel.setPrefWidth(250);
-        rightPanel.setStyle("-fx-background-color: rgba(17, 24, 39, 0.9);");
+        rightPanel = new VBox(15);
+        rightPanel.setPadding(new Insets(15));
+        rightPanel.setPrefWidth(280);
+        rightPanel.setStyle(
+            "-fx-background-color: rgba(17, 24, 39, 0.95);" +
+            "-fx-border-color: rgba(6, 182, 212, 0.3);" +
+            "-fx-border-width: 2;" +
+            "-fx-border-radius: 10;" +
+            "-fx-background-radius: 10;"
+        );
         
-        Label titleLabel = new Label("任务目标");
-        titleLabel.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 16));
-        titleLabel.setTextFill(Color.rgb(6, 182, 212));
+        // NPC列表标题
+        Label npcTitle = new Label("智能体 (AI-NPC)");
+        npcTitle.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 18));
+        npcTitle.setTextFill(Color.rgb(6, 182, 212));
+        addGlowEffect(npcTitle);
         
-        Label task1 = new Label("• 寻找史官");
-        task1.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 14));
-        task1.setTextFill(Color.rgb(209, 213, 219));
+        Label npcDesc = new Label("选择一个智能体进行交互");
+        npcDesc.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 11));
+        npcDesc.setTextFill(Color.rgb(156, 163, 175));
         
-        Label task2 = new Label("• 收集记忆碎片");
-        task2.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 14));
-        task2.setTextFill(Color.rgb(209, 213, 219));
+        // NPC按钮列表
+        VBox npcList = new VBox(8);
+        for (BaseNPC npc : gameEngine.getNPCManager().getNPCs()) {
+            Button npcButton = createNPCButton(npc);
+            npcList.getChildren().add(npcButton);
+        }
         
-        Label task3 = new Label("• 见证文明历史");
-        task3.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 14));
-        task3.setTextFill(Color.rgb(209, 213, 219));
+        ScrollPane scrollPane = new ScrollPane(npcList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scrollPane.setPrefHeight(400);
         
-        rightPanel.getChildren().addAll(titleLabel, task1, task2, task3);
+        rightPanel.getChildren().addAll(npcTitle, npcDesc, scrollPane);
+    }
+    
+    private Button createNPCButton(BaseNPC npc) {
+        VBox content = new VBox(5);
+        content.setPadding(new Insets(10));
+        
+        Label nameLabel = new Label(npc.getName());
+        nameLabel.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 14));
+        nameLabel.setTextFill(npc.getColor());
+        
+        Label statusLabel = new Label("交互次数: 0 | 距离: " + 
+            String.format("%.1f", gameEngine.getPlayer().getPosition().distance(npc.getPosition())));
+        statusLabel.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 10));
+        statusLabel.setTextFill(Color.rgb(156, 163, 175));
+        
+        content.getChildren().addAll(nameLabel, statusLabel);
+        
+        Button button = new Button();
+        button.setGraphic(content);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setStyle(
+            "-fx-background-color: rgba(31, 41, 55, 0.8);" +
+            "-fx-border-color: rgba(75, 85, 99, 0.5);" +
+            "-fx-border-width: 2;" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-cursor: hand;"
+        );
+        
+        button.setOnMouseEntered(e -> {
+            button.setStyle(
+                "-fx-background-color: rgba(6, 182, 212, 0.2);" +
+                "-fx-border-color: rgb(6, 182, 212);" +
+                "-fx-border-width: 2;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-cursor: hand;"
+            );
+        });
+        
+        button.setOnMouseExited(e -> {
+            button.setStyle(
+                "-fx-background-color: rgba(31, 41, 55, 0.8);" +
+                "-fx-border-color: rgba(75, 85, 99, 0.5);" +
+                "-fx-border-width: 2;" +
+                "-fx-border-radius: 8;" +
+                "-fx-background-radius: 8;" +
+                "-fx-cursor: hand;"
+            );
+        });
+        
+        button.setOnAction(e -> {
+            if (dialoguePanel != null) {
+                dialoguePanel.setNPC(npc);
+                dialoguePanel.show();
+            }
+        });
+        
+        return button;
+    }
+    
+    private void createLeftPanel() {
+        leftPanel = new VBox(15);
+        leftPanel.setPadding(new Insets(15));
+        leftPanel.setPrefWidth(280);
+        leftPanel.setStyle(
+            "-fx-background-color: rgba(17, 24, 39, 0.95);" +
+            "-fx-border-color: rgba(6, 182, 212, 0.3);" +
+            "-fx-border-width: 2;" +
+            "-fx-border-radius: 10;" +
+            "-fx-background-radius: 10;"
+        );
+        
+        // 世界状态
+        Label worldTitle = new Label("世界状态");
+        worldTitle.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 18));
+        worldTitle.setTextFill(Color.rgb(6, 182, 212));
+        addGlowEffect(worldTitle);
+        
+        VBox worldInfo = new VBox(8);
+        worldInfo.setPadding(new Insets(10));
+        worldInfo.setStyle(
+            "-fx-background-color: rgba(0, 0, 0, 0.3);" +
+            "-fx-border-radius: 5;" +
+            "-fx-background-radius: 5;"
+        );
+        
+        Label epochInfo = new Label("当前纪元: " + gameEngine.getEpochManager().getCurrentEpoch().getName());
+        epochInfo.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 12));
+        epochInfo.setTextFill(Color.rgb(209, 213, 219));
+        
+        Label entropyInfo = new Label(String.format("熵化程度: %.1f%%", 
+            gameEngine.getEpochManager().getEntropyLevel()));
+        entropyInfo.setFont(Font.font("Microsoft YaHei", FontWeight.NORMAL, 12));
+        entropyInfo.setTextFill(Color.rgb(239, 68, 68));
+        
+        worldInfo.getChildren().addAll(epochInfo, entropyInfo);
+        
+        // 快捷按钮
+        VBox quickActions = new VBox(8);
+        quickActions.setPadding(new Insets(10, 0, 0, 0));
+        
+        Button fragmentButton = createQuickButton("📚 记忆碎片", e -> fragmentGallery.show());
+        Button epochButton = createQuickButton("🌌 纪元系统", e -> epochPanel.show());
+        
+        quickActions.getChildren().addAll(fragmentButton, epochButton);
+        
+        // 玩家信息
+        Label playerTitle = new Label("玩家信息");
+        playerTitle.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 16));
+        playerTitle.setTextFill(Color.rgb(6, 182, 212));
+        
+        VBox playerInfo = new VBox(8);
+        playerInfo.setPadding(new Insets(10));
+        playerInfo.setStyle(
+            "-fx-background-color: rgba(0, 0, 0, 0.3);" +
+            "-fx-border-radius: 5;" +
+            "-fx-background-radius: 5;"
+        );
+        
+        Label posLabel = new Label(String.format("位置: (%.1f, %.1f, %.1f)",
+            gameEngine.getPlayer().getPosition().getX(),
+            gameEngine.getPlayer().getPosition().getY(),
+            gameEngine.getPlayer().getPosition().getZ()));
+        posLabel.setFont(Font.font("Consolas", FontWeight.NORMAL, 11));
+        posLabel.setTextFill(Color.rgb(156, 163, 175));
+        
+        playerInfo.getChildren().add(posLabel);
+        
+        leftPanel.getChildren().addAll(worldTitle, worldInfo, quickActions, playerTitle, playerInfo);
+    }
+    
+    private Button createQuickButton(String text, javafx.event.EventHandler<javafx.event.ActionEvent> handler) {
+        Button button = new Button(text);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setFont(Font.font("Microsoft YaHei", FontWeight.BOLD, 12));
+        button.setStyle(
+            "-fx-background-color: rgba(6, 182, 212, 0.2);" +
+            "-fx-text-fill: rgb(6, 182, 212);" +
+            "-fx-border-color: rgb(6, 182, 212);" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 5;" +
+            "-fx-background-radius: 5;" +
+            "-fx-cursor: hand;" +
+            "-fx-padding: 8;"
+        );
+        
+        button.setOnMouseEntered(e -> button.setStyle(
+            "-fx-background-color: rgb(6, 182, 212);" +
+            "-fx-text-fill: black;" +
+            "-fx-border-color: rgb(6, 182, 212);" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 5;" +
+            "-fx-background-radius: 5;" +
+            "-fx-cursor: hand;" +
+            "-fx-padding: 8;"
+        ));
+        
+        button.setOnMouseExited(e -> button.setStyle(
+            "-fx-background-color: rgba(6, 182, 212, 0.2);" +
+            "-fx-text-fill: rgb(6, 182, 212);" +
+            "-fx-border-color: rgb(6, 182, 212);" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 5;" +
+            "-fx-background-radius: 5;" +
+            "-fx-cursor: hand;" +
+            "-fx-padding: 8;"
+        ));
+        
+        button.setOnAction(handler);
+        return button;
+    }
+    
+    private void createDialoguePanel() {
+        dialoguePanel = new DialoguePanel(gameEngine);
+    }
+    
+    private void createFragmentGallery() {
+        fragmentGallery = new FragmentGallery(gameEngine);
+    }
+    
+    private void createEpochPanel() {
+        epochPanel = new EpochPanel(gameEngine);
+    }
+    
+    private void addGlowEffect(Label label) {
+        DropShadow glow = new DropShadow();
+        glow.setColor(Color.rgb(6, 182, 212, 0.8));
+        glow.setRadius(15);
+        label.setEffect(glow);
     }
 
     public void toggleMenu() {
@@ -147,5 +359,21 @@ public class GameUI {
 
     public VBox getRightPanel() {
         return rightPanel;
+    }
+    
+    public VBox getLeftPanel() {
+        return leftPanel;
+    }
+    
+    public DialoguePanel getDialoguePanel() {
+        return dialoguePanel;
+    }
+    
+    public FragmentGallery getFragmentGallery() {
+        return fragmentGallery;
+    }
+    
+    public EpochPanel getEpochPanel() {
+        return epochPanel;
     }
 }

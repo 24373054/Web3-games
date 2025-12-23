@@ -28,6 +28,7 @@ public class GameLauncher {
         
         // 创建根布局
         BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: linear-gradient(to bottom, #000000, #1f2937);");
         
         // 设置3D场景为中心
         root.setCenter(scene3DManager.getSubScene());
@@ -37,6 +38,7 @@ public class GameLauncher {
         root.setTop(gameUI.getTopBar());
         root.setBottom(gameUI.getBottomBar());
         root.setRight(gameUI.getRightPanel());
+        root.setLeft(gameUI.getLeftPanel());
         
         // 创建场景
         Scene scene = new Scene(root, GAME_WIDTH, GAME_HEIGHT);
