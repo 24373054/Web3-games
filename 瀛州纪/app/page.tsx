@@ -5,6 +5,7 @@ import { ethers } from 'ethers'
 import Link from 'next/link'
 import WorldStatus from '@/components/WorldStatus'
 import DigitalBeingCard from '@/components/DigitalBeingCard'
+import DigitalBeingCardWeb2 from '@/components/DigitalBeingCardWeb2'
 import NPCList from '@/components/NPCList'
 import DialogueInterface from '@/components/DialogueInterface'
 import EventTimeline from '@/components/EventTimeline'
@@ -12,6 +13,8 @@ import FragmentGallery from '@/components/FragmentGallery'
 import EpochPanel from '@/components/EpochPanel'
 import PlayerProgress from '@/components/PlayerProgress'
 import MemorySortGame from '@/components/MiniGames/MemorySortGame'
+import ModeSelector from '@/components/ModeSelector'
+import { IWalletAdapter, createWalletAdapter, WalletMode } from '@/lib/walletAdapter'
 
 // 动态导入3D组件（仅客户端）
 const YingzhouWorld = lazy(() => import('@/components/Scene3D/YingzhouWorld'))
@@ -22,6 +25,8 @@ type SceneMode = 'full' | 'simple'
 type PanelTab = 'dialogue' | 'fragments' | 'world' | 'games' | 'progress'
 
 export default function Home() {
+  const [gameMode, setGameMode] = useState<WalletMode | null>(null)
+  const [walletAdapter, setWalletAdapter] = useState<IWalletAdapter | null>(null)
   const [account, setAccount] = useState<string | null>(null)
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null)
   const [beingId, setBeingId] = useState<number | null>(null)
@@ -33,7 +38,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<PanelTab>('dialogue')
 
   useEffect(() => {
-    checkConnection()
+    // 检查是否已选择模式
+    const savedMode = localStorage.getItem('yingzhou_game_mode') as WalletMode | null
+    if (savedMode) {
+      handleModeSelection(savedMode)
+    }
     
     // 监听网络切换
     if (window.ethereum) {
@@ -42,6 +51,42 @@ export default function Home() {
       })
     }
   }, [])
+
+  // 处理模式选择
+  const handleModeSelection = async (mode: WalletMode) => {
+    setGameMode(mode)
+    localStorage.setItem('yingzhou_game_mode', mode)
+
+    if (mode === 'web2') {
+      // Web2 模式：使用模拟钱包
+      const adapter = createWalletAdapter('web2')
+      setWalletAdapter(adapter)
+      setAccount(adapter.getAddress())
+      setProvider(adapter.getProvider() as any)
+      
+      // 检查是否已有数字生命
+      const nfts = await adapter.getAllNFTs?.()
+      if (nfts && nfts.length > 0) {
+        setBeingId(nfts[0].tokenId)
+      }
+    } else {
+      // Web3 模式：等待用户连接钱包
+      checkConnection()
+    }
+  }
+
+  // 切换模式
+  const switchMode = () => {
+    if (confirm('切换模式将重新开始，确定要切换吗？')) {
+      localStorage.removeItem('yingzhou_game_mode')
+      setGameMode(null)
+      setWalletAdapter(null)
+      setAccount(null)
+      setProvider(null)
+      setBeingId(null)
+      window.location.reload()
+    }
+  }
 
   // 当创建数字生命后，自动切换到3D视图
   useEffect(() => {
@@ -79,6 +124,12 @@ export default function Home() {
   }
 
   const connectWallet = async () => {
+    if (gameMode === 'web2') {
+      // Web2 模式已自动连接
+      return
+    }
+
+    // Web3 模式连接逻辑
     // 检测是否为移动端
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
@@ -172,6 +223,9 @@ export default function Home() {
       const signer = await provider.getSigner()
       const address = await signer.getAddress()
       
+      // 创建 Web3 适配器
+      const adapter = createWalletAdapter('web3', provider, address)
+      setWalletAdapter(adapter)
       setProvider(provider)
       setAccount(address)
       setNetworkStatus({
@@ -181,6 +235,11 @@ export default function Home() {
     } catch (error) {
       console.error('连接钱包失败:', error)
     }
+  }
+
+  // 如果还没选择模式，显示模式选择器
+  if (!gameMode) {
+    return <ModeSelector onSelectMode={handleModeSelection} />
   }
 
   return (
@@ -206,18 +265,43 @@ export default function Home() {
           </div>
           
           {!account ? (
-            <button onClick={connectWallet} className="btn-primary">
-              连接钱包
-            </button>
-          ) : (
-            <div className="text-right">
-              <p className="text-xs text-gray-400">已连接</p>
-              <p className="contract-text">{account.slice(0, 6)}...{account.slice(-4)}</p>
-              {networkStatus && (
-                <p className={`text-xs mt-1 ${networkStatus.correct ? 'text-green-400' : 'text-red-400'}`}>
-                  {networkStatus.correct ? '✓' : '⚠'} Chain ID: {networkStatus.chainId}
-                </p>
+            <div className="flex gap-3">
+              <button onClick={switchMode} className="px-4 py-2 border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white transition-all">
+                切换模式
+              </button>
+              {gameMode === 'web3' && (
+                <button onClick={connectWallet} className="btn-primary">
+                  连接钱包
+                </button>
               )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              {/* 模式指示器 */}
+              <div className={`px-3 py-1 rounded text-xs font-bold ${
+                gameMode === 'web2' 
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-blue-600 text-white'
+              }`}>
+                {gameMode === 'web2' ? '🎮 Web2 模式' : '⛓️ Web3 模式'}
+              </div>
+              
+              <div className="text-right">
+                <p className="text-xs text-gray-400">已连接</p>
+                <p className="contract-text">{account.slice(0, 6)}...{account.slice(-4)}</p>
+                {networkStatus && gameMode === 'web3' && (
+                  <p className={`text-xs mt-1 ${networkStatus.correct ? 'text-green-400' : 'text-red-400'}`}>
+                    {networkStatus.correct ? '✓' : '⚠'} Chain ID: {networkStatus.chainId}
+                  </p>
+                )}
+              </div>
+              
+              <button 
+                onClick={switchMode} 
+                className="px-3 py-1 text-xs border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-white transition-all"
+              >
+                切换模式
+              </button>
             </div>
           )}
         </div>
@@ -230,6 +314,26 @@ export default function Home() {
             <h2 className="text-5xl font-bold mb-8 glow-text">
               欢迎来到瀛州
             </h2>
+            
+            {/* 模式提示 */}
+            <div className={`mb-8 p-6 rounded-lg border-2 ${
+              gameMode === 'web2'
+                ? 'bg-green-900 bg-opacity-20 border-green-400'
+                : 'bg-blue-900 bg-opacity-20 border-blue-400'
+            }`}>
+              <h3 className={`text-2xl font-bold mb-3 ${
+                gameMode === 'web2' ? 'text-green-400' : 'text-blue-400'
+              }`}>
+                {gameMode === 'web2' ? '🎮 Web2 模式已启动' : '⛓️ Web3 模式已启动'}
+              </h3>
+              <p className="text-gray-300">
+                {gameMode === 'web2' 
+                  ? '你正在使用模拟钱包体验游戏，所有数据保存在本地浏览器中。'
+                  : '你正在使用真实区块链钱包，所有数据将永久保存在链上。'
+                }
+              </p>
+            </div>
+            
             <div className="digital-frame mb-8">
               <p className="text-lg leading-relaxed mb-4">
                 在亿万光年之外，存在一个自我演化的数字生命文明——<span className="text-yingzhou-cyan font-bold">瀛州（Yingzhou）</span>。
@@ -257,9 +361,21 @@ function remember() external {
 }`}
             </div>
 
-            <button onClick={connectWallet} className="btn-primary text-xl px-12 py-4">
-              化身数字生命，进入瀛州
-            </button>
+            {gameMode === 'web2' ? (
+              <button 
+                onClick={() => {
+                  setAccount(walletAdapter!.getAddress())
+                  setProvider(walletAdapter!.getProvider() as any)
+                }}
+                className="btn-primary text-xl px-12 py-4"
+              >
+                开始游戏（Web2 模式）
+              </button>
+            ) : (
+              <button onClick={connectWallet} className="btn-primary text-xl px-12 py-4">
+                连接钱包，进入瀛州
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -420,12 +536,20 @@ function remember() external {
             {/* 左侧：世界状态和玩家信息 */}
             <div className="space-y-6">
               <WorldStatus provider={provider} />
-              <DigitalBeingCard 
-                provider={provider} 
-                account={account}
-                beingId={beingId}
-                setBeingId={setBeingId}
-              />
+              {gameMode === 'web2' && walletAdapter ? (
+                <DigitalBeingCardWeb2
+                  walletAdapter={walletAdapter}
+                  beingId={beingId}
+                  setBeingId={setBeingId}
+                />
+              ) : (
+                <DigitalBeingCard 
+                  provider={provider} 
+                  account={account}
+                  beingId={beingId}
+                  setBeingId={setBeingId}
+                />
+              )}
             </div>
 
             {/* 中间：标签页面板 */}
