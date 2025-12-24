@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加 Hardhat 网络 - 瀛州纪</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #00ffff;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: #1a1a1a;
+            border: 1px solid #00ffff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .info-box div {
+            margin: 8px 0;
+        }
+        .label {
+            color: #888;
+            display: inline-block;
+            width: 150px;
+        }
+        .value {
+            color: #00ffff;
+        }
+        button {
+            background: linear-gradient(135deg, #00ffff 0%, #0088ff 100%);
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .status.success {
+            background: #00ff0020;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+        .status.error {
+            background: #ff000020;
+            border: 1px solid #ff0000;
+            color: #ff0000;
+        }
+        .steps {
+            margin: 20px 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 添加 Hardhat 本地网络</h1>
+        
+        <div class="info-box">
+            <div><span class="label">网络名称:</span> <span class="value">Hardhat Local</span></div>
+            <div><span class="label">RPC URL:</span> <span class="value">http://127.0.0.1:8545</span></div>
+            <div><span class="label">Chain ID:</span> <span class="value">31337</span></div>
+            <div><span class="label">货币符号:</span> <span class="value">ETH</span></div>
+        </div>
+
+        <button id="addNetworkBtn" onclick="addNetwork()">
+            🦊 一键添加到 MetaMask
+        </button>
+
+        <div id="status"></div>
+
+        <h2 style="margin-top: 40px; color: #00ffff;">📋 手动添加步骤</h2>
+        <ol class="steps">
+            <li>打开 MetaMask 扩展</li>
+            <li>点击右上角的网络下拉菜单</li>
+            <li>点击"添加网络"或"Add network"</li>
+            <li>点击"手动添加网络"</li>
+            <li>填写上方显示的网络信息</li>
+            <li>点击"保存"</li>
+            <li>MetaMask 会自动切换到新网络</li>
+        </ol>
+
+        <h2 style="margin-top: 40px; color: #00ffff;">🔑 测试账户</h2>
+        <div class="info-box">
+            <div><span class="label">地址:</span></div>
+            <div class="value" style="word-break: break-all;">0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</div>
+            <div style="margin-top: 10px;"><span class="label">私钥:</span></div>
+            <div class="value" style="word-break: break-all;">0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</div>
+            <div style="margin-top: 10px;"><span class="label">余额:</span> <span class="value">10000 ETH</span></div>
+        </div>
+    </div>
+
+    <script>
+        async function addNetwork() {
+            const button = document.getElementById('addNetworkBtn');
+            const statusDiv = document.getElementById('status');
+            
+            if (typeof window.ethereum === 'undefined') {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ 未检测到 MetaMask，请先安装 MetaMask 扩展';
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '正在添加...';
+            statusDiv.textContent = '';
+
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x7A69', // 31337 in hex
+                        chainName: 'Hardhat Local',
+                        nativeCurrency: {
+                            name: 'Ether',
+                            symbol: 'ETH',
+                            decimals: 18
+                        },
+                        rpcUrls: ['http://127.0.0.1:8545'],
+                        blockExplorerUrls: null
+                    }]
+                });
+
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = '✅ 网络添加成功!<br>MetaMask 已自动切换到 Hardhat Local 网络<br><br>现在可以返回主页连接钱包了';
+                button.textContent = '✅ 添加成功';
+                
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('添加网络失败:', error);
+                statusDiv.className = 'status error';
+                
+                if (error.code === 4001) {
+                    statusDiv.textContent = '❌ 用户取消了操作';
+                } else if (error.code === -32002) {
+                    statusDiv.textContent = '⚠️ 请在 MetaMask 中确认待处理的请求';
+                } else {
+                    statusDiv.textContent = '❌ 添加失败: ' + error.message + '\n\n请尝试手动添加';
+                }
+                
+                button.disabled = false;
+                button.textContent = '🦊 一键添加到 MetaMask';
+            }
+        }
+
+        // 检查是否已经在正确的网络
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    if (chainId === '0x7A69') {
+                        const statusDiv = document.getElementById('status');
+                        statusDiv.className = 'status success';
+                        statusDiv.innerHTML = '✅ 您已经连接到 Hardhat Local 网络!<br>可以返回主页连接钱包了';
+                    }
+                } catch (error) {
+                    console.error('检查网络失败:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
