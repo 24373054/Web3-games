@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>关键词调试工具</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #0ff;
+      padding: 20px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #0ff;
+      border-radius: 5px;
+    }
+    h2 { color: #ff0; }
+    .keyword { 
+      display: inline-block;
+      padding: 5px 10px;
+      margin: 5px;
+      background: #333;
+      border: 1px solid #0ff;
+      border-radius: 3px;
+    }
+    .found { background: #060; border-color: #0f0; }
+    button {
+      background: #0ff;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #0cc; }
+  </style>
+</head>
+<body>
+  <h1>🔍 瀛州纪 - 关键词调试工具</h1>
+  
+  <div class="section">
+    <h2>📊 当前状态</h2>
+    <div id="status"></div>
+  </div>
+  
+  <div class="section">
+    <h2>🔑 NPC关键词配置</h2>
+    <div id="npc-keywords"></div>
+  </div>
+  
+  <div class="section">
+    <h2>✅ 已发现的关键词</h2>
+    <div id="found-keywords"></div>
+  </div>
+  
+  <div class="section">
+    <h2>💎 已获得的碎片</h2>
+    <div id="fragments"></div>
+  </div>
+  
+  <div class="section">
+    <button onclick="refresh()">🔄 刷新</button>
+    <button onclick="clearData()">🗑️ 清除所有数据</button>
+  </div>
+
+  <script>
+    const NPC_KEYWORDS = {
+      historian: { 
+        keywords: ['创世', '起源', '诞生', '开端'], 
+        fragmentId: 10, 
+        name: '史官·记录者'
+      },
+      craftsman: { 
+        keywords: ['生命', '成长', '萌芽', '进化'], 
+        fragmentId: 11, 
+        name: '工匠·塑造者'
+      },
+      merchant: { 
+        keywords: ['繁荣', '文明', '辉煌', '交易'], 
+        fragmentId: 12, 
+        name: '商序·交易者'
+      },
+      prophet: { 
+        keywords: ['衰败', '熵化', '混乱', '预言'], 
+        fragmentId: 13, 
+        name: '先知·预言者'
+      },
+      forgotten: { 
+        keywords: ['毁灭', '终结', '重生', '轮回'], 
+        fragmentId: 14, 
+        name: '遗忘者·见证者'
+      }
+    };
+
+    const FRAGMENT_NAMES = {
+      10: '起源密钥',
+      11: '生命密码',
+      12: '文明遗产',
+      13: '混沌之心',
+      14: '轮回之钥'
+    };
+
+    function refresh() {
+      // 检查所有可能的 localStorage keys
+      const allKeys = Object.keys(localStorage);
+      console.log('所有 localStorage keys:', allKeys);
+      
+      let data = JSON.parse(localStorage.getItem('yingzhou_mock_wallet') || '{}');
+      
+      // 如果没有数据，尝试查找其他可能的 key
+      if (!data.address) {
+        const possibleKeys = allKeys.filter(k => k.includes('yingzhou') || k.includes('wallet') || k.includes('mock'));
+        console.log('可能的 keys:', possibleKeys);
+        
+        if (possibleKeys.length > 0) {
+          try {
+            data = JSON.parse(localStorage.getItem(possibleKeys[0]) || '{}');
+          } catch (e) {
+            console.error('解析失败:', e);
+          }
+        }
+      }
+      
+      // 状态
+      document.getElementById('status').innerHTML = `
+        <p>地址: ${data.address || '未创建'}</p>
+        <p>当前纪元: ${data.currentEpoch || 0}</p>
+        <p>碎片总数: ${(data.fragments || []).length}</p>
+        <p>关键词总数: ${(data.keywordsFound || []).length}</p>
+        <p style="color: #666; font-size: 12px;">localStorage keys: ${allKeys.length} 个</p>
+        <p style="color: #666; font-size: 12px;">使用的 key: yingzhou_mock_wallet</p>
+      `;
+      
+      // NPC关键词
+      let npcHtml = '';
+      for (const [npcId, config] of Object.entries(NPC_KEYWORDS)) {
+        const foundKeywords = data.keywordsFound || [];
+        npcHtml += `<div style="margin: 10px 0; padding: 10px; background: #111;">`;
+        npcHtml += `<strong>${config.name}</strong> (碎片 #${config.fragmentId})<br>`;
+        npcHtml += `关键词: `;
+        config.keywords.forEach(kw => {
+          const found = foundKeywords.includes(kw);
+          npcHtml += `<span class="keyword ${found ? 'found' : ''}">${kw} ${found ? '✓' : ''}</span>`;
+        });
+        npcHtml += `</div>`;
+      }
+      document.getElementById('npc-keywords').innerHTML = npcHtml;
+      
+      // 已发现关键词
+      const foundKeywords = data.keywordsFound || [];
+      if (foundKeywords.length > 0) {
+        document.getElementById('found-keywords').innerHTML = 
+          foundKeywords.map(kw => `<span class="keyword found">${kw}</span>`).join('');
+      } else {
+        document.getElementById('found-keywords').innerHTML = '<p style="color: #666;">暂无</p>';
+      }
+      
+      // 已获得碎片
+      const fragments = data.fragments || [];
+      const hiddenFragments = fragments.filter(f => f >= 10 && f <= 14);
+      if (hiddenFragments.length > 0) {
+        document.getElementById('fragments').innerHTML = 
+          hiddenFragments.map(f => 
+            `<span class="keyword found">#${f} ${FRAGMENT_NAMES[f]}</span>`
+          ).join('');
+      } else {
+        document.getElementById('fragments').innerHTML = '<p style="color: #666;">暂无隐藏碎片</p>';
+      }
+    }
+
+    function clearData() {
+      if (confirm('确定要清除所有数据吗？这将重置你的游戏进度！')) {
+        localStorage.removeItem('yingzhou_mock_wallet');
+        alert('数据已清除！');
+        refresh();
+      }
+    }
+
+    // 初始加载
+    refresh();
+  </script>
+</body>
+</html>
